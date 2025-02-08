@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Transaction from '../components/transaction';
 import { supabase } from "@/utils/supabase";
+import Friends from '../../components/Friends';
 
 type Post = {
   id: number;
@@ -28,6 +29,7 @@ export default function SocialScreen() {
   const [newPost, setNewPost] = useState("");
   const [newRestaurant, setNewRestaurant] = useState("");
   const [newAmount, setNewAmount] = useState("");
+  const [activeTab, setActiveTab] = useState<'feed' | 'friends'>('feed');
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -160,37 +162,68 @@ export default function SocialScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={styles.newPostContainer}>
-        <FlatList
-          data={posts}
-          renderItem={renderPost}
-          keyExtractor={(item) => item.id.toString()}
-          showsVerticalScrollIndicator={false}
-        />
-
-        <TextInput
-          style={styles.input}
-          value={newRestaurant}
-          onChangeText={setNewRestaurant}
-          placeholder="Restaurant name"
-        />
-        <TextInput
-          style={styles.input}
-          value={newAmount}
-          onChangeText={setNewAmount}
-          placeholder="Amount spent"
-          keyboardType="decimal-pad"
-        />
+      <View style={styles.tabContainer}>
         <TouchableOpacity
-          style={[styles.postButton, { 
-            opacity: (newRestaurant.trim() && newAmount.trim()) ? 1 : 0.5 
-          }]}
-          onPress={handlePost}
-          disabled={!newRestaurant.trim() || !newAmount.trim()}
+          style={[
+            styles.tab,
+            activeTab === 'feed' && styles.activeTab
+          ]}
+          onPress={() => setActiveTab('feed')}
         >
-          <Text style={styles.postButtonText}>Post</Text>
+          <Text style={[
+            styles.tabText,
+            activeTab === 'feed' && styles.activeTabText
+          ]}>Feed</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.tab,
+            activeTab === 'friends' && styles.activeTab
+          ]}
+          onPress={() => setActiveTab('friends')}
+        >
+          <Text style={[
+            styles.tabText,
+            activeTab === 'friends' && styles.activeTabText
+          ]}>Friends</Text>
         </TouchableOpacity>
       </View>
+
+      {activeTab === 'feed' ? (
+        <View style={styles.newPostContainer}>
+          <FlatList
+            data={posts}
+            renderItem={renderPost}
+            keyExtractor={(item) => item.id.toString()}
+            showsVerticalScrollIndicator={false}
+          />
+
+          <TextInput
+            style={styles.input}
+            value={newRestaurant}
+            onChangeText={setNewRestaurant}
+            placeholder="Restaurant name"
+          />
+          <TextInput
+            style={styles.input}
+            value={newAmount}
+            onChangeText={setNewAmount}
+            placeholder="Amount spent"
+            keyboardType="decimal-pad"
+          />
+          <TouchableOpacity
+            style={[styles.postButton, { 
+              opacity: (newRestaurant.trim() && newAmount.trim()) ? 1 : 0.5 
+            }]}
+            onPress={handlePost}
+            disabled={!newRestaurant.trim() || !newAmount.trim()}
+          >
+            <Text style={styles.postButtonText}>Post</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <Friends />
+      )}
     </SafeAreaView>
   );
 }
@@ -266,5 +299,29 @@ const styles = StyleSheet.create({
   actionText: {
     marginLeft: 5,
     color: "#666",
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    backgroundColor: 'white',
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 15,
+    alignItems: 'center',
+  },
+  activeTab: {
+    borderBottomWidth: 2,
+    borderBottomColor: '#4CD964',
+  },
+  tabText: {
+    color: '#666666',
+    fontSize: 16,
+    fontFamily: 'InriaSans-Regular',
+  },
+  activeTabText: {
+    color: '#4CD964',
+    fontFamily: 'InriaSans-Bold',
   },
 });
