@@ -1,0 +1,9 @@
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:iOS Simulator, id:3BA8155A-85D1-4036-9D50-C24A6476F57B, OS:18.2, name:iPhone 16 Pro }
+{ platform:iOS Simulator, id:3BA8155A-85D1-4036-9D50-C24A6476F57B, OS:18.2, name:iPhone 16 Pro }
+** BUILD FAILED **
+
+
+The following build commands failed:
+	Building project bitebudget with scheme bitebudget and configuration Debug
+(1 failure)
