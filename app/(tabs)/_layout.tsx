@@ -46,7 +46,7 @@ export default function TabLayout() {
         options={{
           title: "Social",
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name="person" size={30} color={color} />
+            <Ionicons name="people" size={30} color={color} />
           ),
         }}
       />
@@ -55,7 +55,7 @@ export default function TabLayout() {
         options={{
           title: "Profile",
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name="people" size={30} color={color} />
+            <Ionicons name="person" size={30} color={color} />
           ),
         }}
       />
