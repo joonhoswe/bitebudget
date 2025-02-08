@@ -40,7 +40,7 @@ export default function Index() {
           alignItems: 'center',
           marginBottom: 20,
         }}
-        onPress={() => router.push('/auth/login')}
+        onPress={() => router.push('./auth/login')}
       >
         <Text
           style={{
