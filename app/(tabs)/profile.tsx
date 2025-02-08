@@ -86,8 +86,7 @@ export default function ProfileScreen() {
             <TouchableOpacity
               key={range}
               style={{
-                backgroundColor:
-                  timeRange === range ? '#4CD964' : 'transparent',
+                backgroundColor: timeRange === range ? '#4CD964' : 'transparent',
                 borderRadius: 20,
                 paddingVertical: 8,
                 paddingHorizontal: 20,
@@ -100,7 +99,7 @@ export default function ProfileScreen() {
                 style={{
                   color: timeRange === range ? 'white' : '#666666',
                   fontFamily: 'InriaSans-Regular',
-                  fontSize: 12,
+                  fontSize: 16,
                   textTransform: 'capitalize',
                 }}
               >
@@ -111,10 +110,10 @@ export default function ProfileScreen() {
         </View>
 
         {/* Amount Display */}
-        <View style={{ marginBottom: 20 }}>
+        <View style={{ marginBottom: 30 }}>
           <Text
             style={{
-              fontSize: 24,
+              fontSize: 36,
               fontFamily: 'InriaSans-Bold',
               color: '#333333',
             }}
@@ -123,9 +122,10 @@ export default function ProfileScreen() {
           </Text>
           <Text
             style={{
-              fontSize: 12,
+              fontSize: 14,
               fontFamily: 'InriaSans-Regular',
               color: '#666666',
+              marginTop: 5,
             }}
           >
             September 2023
@@ -133,23 +133,22 @@ export default function ProfileScreen() {
         </View>
 
         {/* Chart */}
-        <View style={{ marginBottom: 20 }}>
+        <View style={{ marginBottom: 30 }}>
           <TouchableOpacity
             onPress={() => setIsBarChart(!isBarChart)}
             style={{
-              position: 'absolute',
-              right: 0,
-              top: -30,
-              zIndex: 1,
+              alignSelf: 'flex-end',
+              marginBottom: 10,
             }}
           >
             <Text
               style={{
                 color: '#4CD964',
                 fontFamily: 'InriaSans-Regular',
+                fontSize: 14,
               }}
             >
-              {isBarChart ? 'Show Line Chart' : 'Show Bar Chart'}
+              Show {isBarChart ? 'Line' : 'Bar'} Chart
             </Text>
           </TouchableOpacity>
           <SpendingChart data={chartData} isBarChart={isBarChart} />
