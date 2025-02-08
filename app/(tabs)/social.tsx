@@ -10,37 +10,44 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Transaction from '../components/transaction';
 
 type Post = {
   id: string;
+  restaurant: string;
+  amount: number;
+  userId: string;
   username: string;
   userAvatar: string;
-  content: string;
+  timestamp: string;
   likes: number;
   comments: number;
-  timeAgo: string;
   isLiked: boolean;
 };
 
 const DUMMY_DATA: Post[] = [
   {
     id: "1",
+    restaurant: "McDonalds",
+    amount: 15.00,
+    userId: "user1",
     username: "johndoe",
     userAvatar: "https://i.pravatar.cc/150?img=1",
-    content: "Just spent $15 at McDonalds!",
+    timestamp: "2h ago",
     likes: 42,
     comments: 5,
-    timeAgo: "2h",
     isLiked: false,
   },
   {
     id: "2",
+    restaurant: "Steakhouse",
+    amount: 40.00,
+    userId: "user2",
     username: "janedoe",
     userAvatar: "https://i.pravatar.cc/150?img=2",
-    content: "Just wasted $40 on a some steak...",
+    timestamp: "4h ago",
     likes: 28,
     comments: 3,
-    timeAgo: "4h",
     isLiked: true,
   },
 ];
@@ -48,6 +55,8 @@ const DUMMY_DATA: Post[] = [
 export default function SocialScreen() {
   const [posts, setPosts] = useState<Post[]>(DUMMY_DATA);
   const [newPost, setNewPost] = useState("");
+  const [newRestaurant, setNewRestaurant] = useState("");
+  const [newAmount, setNewAmount] = useState("");
 
   const handleLike = (postId: string) => {
     setPosts(
@@ -65,81 +74,79 @@ export default function SocialScreen() {
   };
 
   const handlePost = () => {
-    if (!newPost.trim()) return;
+    if (!newRestaurant.trim() || !newAmount.trim()) return;
 
     const post: Post = {
       id: Date.now().toString(),
+      restaurant: newRestaurant,
+      amount: parseFloat(newAmount),
+      userId: "currentUser",
       username: "me",
       userAvatar: "https://i.pravatar.cc/150?img=3",
-      content: newPost,
+      timestamp: "now",
       likes: 0,
       comments: 0,
-      timeAgo: "now",
       isLiked: false,
     };
 
     setPosts([post, ...posts]);
+    setNewRestaurant("");
+    setNewAmount("");
     setNewPost("");
   };
 
   const renderPost = ({ item }: { item: Post }) => (
-    <View style={styles.postContainer}>
-      <View style={styles.postHeader}>
-        <Image source={{ uri: item.userAvatar }} style={styles.avatar} />
-        <View>
-          <Text style={styles.username}>{item.username}</Text>
-          <Text style={styles.timeAgo}>{item.timeAgo}</Text>
-        </View>
-      </View>
-
-      <Text style={styles.content}>{item.content}</Text>
-
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => handleLike(item.id)}
-        >
-          <Ionicons
-            name={item.isLiked ? "heart" : "heart-outline"}
-            size={24}
-            color={item.isLiked ? "#ff4444" : "#666"}
-          />
-          <Text style={styles.actionText}>{item.likes}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="chatbubble-outline" size={24} color="#666" />
-          <Text style={styles.actionText}>{item.comments}</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+    <Transaction
+      id={item.id}
+      restaurant={item.restaurant}
+      amount={item.amount}
+      userId={item.userId}
+      username={item.username}
+      userAvatar={item.userAvatar}
+      timestamp={item.timestamp}
+      likes={item.likes}
+      comments={item.comments}
+      isLiked={item.isLiked}
+      onLike={handleLike}
+      onComment={(id) => {
+        console.log('Comment pressed for post:', id);
+      }}
+    />
   );
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.newPostContainer}>
+        <FlatList
+          data={posts}
+          renderItem={renderPost}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+        />
+
         <TextInput
           style={styles.input}
-          value={newPost}
-          onChangeText={setNewPost}
-          placeholder="What's on your mind?"
-          multiline
+          value={newRestaurant}
+          onChangeText={setNewRestaurant}
+          placeholder="Restaurant name"
+        />
+        <TextInput
+          style={styles.input}
+          value={newAmount}
+          onChangeText={setNewAmount}
+          placeholder="Amount spent"
+          keyboardType="decimal-pad"
         />
         <TouchableOpacity
-          style={[styles.postButton, { opacity: newPost.trim() ? 1 : 0.5 }]}
+          style={[styles.postButton, { 
+            opacity: (newRestaurant.trim() && newAmount.trim()) ? 1 : 0.5 
+          }]}
           onPress={handlePost}
-          disabled={!newPost.trim()}
+          disabled={!newRestaurant.trim() || !newAmount.trim()}
         >
           <Text style={styles.postButtonText}>Post</Text>
         </TouchableOpacity>
       </View>
-
-      <FlatList
-        data={posts}
-        renderItem={renderPost}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-      />
     </SafeAreaView>
   );
 }
