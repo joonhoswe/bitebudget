@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,48 +8,99 @@ import {
   TextInput,
   StyleSheet,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Transaction from '../components/transaction';
+import { supabase } from "@/utils/supabase";
 
 type Post = {
-  id: string;
-  username: string;
-  userAvatar: string;
-  content: string;
+  id: number;
+  restaurant: string;
+  amount: number;
+  userID: string;
+  timestamp: string;
   likes: number;
   comments: number;
-  timeAgo: string;
   isLiked: boolean;
 };
 
-const DUMMY_DATA: Post[] = [
-  {
-    id: "1",
-    username: "johndoe",
-    userAvatar: "https://i.pravatar.cc/150?img=1",
-    content: "Just spent $15 at McDonalds!",
-    likes: 42,
-    comments: 5,
-    timeAgo: "2h",
-    isLiked: false,
-  },
-  {
-    id: "2",
-    username: "janedoe",
-    userAvatar: "https://i.pravatar.cc/150?img=2",
-    content: "Just wasted $40 on a some steak...",
-    likes: 28,
-    comments: 3,
-    timeAgo: "4h",
-    isLiked: true,
-  },
-];
-
 export default function SocialScreen() {
-  const [posts, setPosts] = useState<Post[]>(DUMMY_DATA);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [newPost, setNewPost] = useState("");
+  const [newRestaurant, setNewRestaurant] = useState("");
+  const [newAmount, setNewAmount] = useState("");
 
-  const handleLike = (postId: string) => {
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('transactions')
+          .select(`
+            id,
+            restaurant,
+            amount,
+            userID,
+            created_at,
+            likes,
+            comments
+          `)
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        if (error) {
+          console.error('Error fetching posts:', error);
+          return;
+        }
+
+        if (!data) {
+          setPosts([]);
+          return;
+        }
+
+        const formattedPosts: Post[] = data.map(post => ({
+          id: post.id,
+          restaurant: post.restaurant,
+          amount: post.amount,
+          userID: post.userID,
+          timestamp: new Date(post.created_at).toLocaleString(),
+          likes: post.likes ?? 0,
+          comments: post.comments ?? 0,
+          isLiked: false
+        }));
+
+        setPosts(formattedPosts);
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    };
+
+    fetchPosts();
+
+    const subscription = supabase
+      .channel('transactions_channel')
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'transactions' },
+        (payload) => {
+          const newTransaction = payload.new;
+          setPosts(currentPosts => [{
+            id: newTransaction.id,
+            restaurant: newTransaction.restaurant,
+            amount: newTransaction.amount,
+            userID: newTransaction.userID,
+            timestamp: new Date(newTransaction.created_at).toLocaleString(),
+            likes: newTransaction.likes ?? 0,
+            comments: newTransaction.comments ?? 0,
+            isLiked: false
+          }, ...currentPosts]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleLike = (postId: number) => {
     setPosts(
       posts.map((post) => {
         if (post.id === postId) {
@@ -64,82 +115,82 @@ export default function SocialScreen() {
     );
   };
 
-  const handlePost = () => {
-    if (!newPost.trim()) return;
+  const handlePost = async () => {
+    if (!newRestaurant.trim() || !newAmount.trim()) return;
 
-    const post: Post = {
-      id: Date.now().toString(),
-      username: "me",
-      userAvatar: "https://i.pravatar.cc/150?img=3",
-      content: newPost,
-      likes: 0,
-      comments: 0,
-      timeAgo: "now",
-      isLiked: false,
-    };
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .insert({
+          restaurant: newRestaurant,
+          amount: parseFloat(newAmount),
+          userID: "currentUser",  // You'll want to replace this with actual user ID
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single();
 
-    setPosts([post, ...posts]);
-    setNewPost("");
+      if (error) throw error;
+
+      // Clear inputs
+      setNewRestaurant("");
+      setNewAmount("");
+      setNewPost("");
+    } catch (error) {
+      console.error('Error creating post:', error);
+    }
   };
 
   const renderPost = ({ item }: { item: Post }) => (
-    <View style={styles.postContainer}>
-      <View style={styles.postHeader}>
-        <Image source={{ uri: item.userAvatar }} style={styles.avatar} />
-        <View>
-          <Text style={styles.username}>{item.username}</Text>
-          <Text style={styles.timeAgo}>{item.timeAgo}</Text>
-        </View>
-      </View>
-
-      <Text style={styles.content}>{item.content}</Text>
-
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => handleLike(item.id)}
-        >
-          <Ionicons
-            name={item.isLiked ? "heart" : "heart-outline"}
-            size={24}
-            color={item.isLiked ? "#ff4444" : "#666"}
-          />
-          <Text style={styles.actionText}>{item.likes}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="chatbubble-outline" size={24} color="#666" />
-          <Text style={styles.actionText}>{item.comments}</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+    <Transaction
+      id={item.id}
+      restaurant={item.restaurant}
+      amount={item.amount}
+      userID={item.userID}
+      timestamp={item.timestamp}
+      likes={item.likes}
+      comments={item.comments}
+      isLiked={item.isLiked}
+      onLike={handleLike}
+      onComment={(id) => {
+        console.log('Comment pressed for post:', id);
+      }}
+    />
   );
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.newPostContainer}>
+        <FlatList
+          data={posts}
+          renderItem={renderPost}
+          keyExtractor={(item) => item.id.toString()}
+          showsVerticalScrollIndicator={false}
+        />
+
         <TextInput
           style={styles.input}
-          value={newPost}
-          onChangeText={setNewPost}
-          placeholder="What's on your mind?"
-          multiline
+          value={newRestaurant}
+          onChangeText={setNewRestaurant}
+          placeholder="Restaurant name"
+        />
+        <TextInput
+          style={styles.input}
+          value={newAmount}
+          onChangeText={setNewAmount}
+          placeholder="Amount spent"
+          keyboardType="decimal-pad"
         />
         <TouchableOpacity
-          style={[styles.postButton, { opacity: newPost.trim() ? 1 : 0.5 }]}
+          style={[styles.postButton, { 
+            opacity: (newRestaurant.trim() && newAmount.trim()) ? 1 : 0.5 
+          }]}
           onPress={handlePost}
-          disabled={!newPost.trim()}
+          disabled={!newRestaurant.trim() || !newAmount.trim()}
         >
           <Text style={styles.postButtonText}>Post</Text>
         </TouchableOpacity>
       </View>
-
-      <FlatList
-        data={posts}
-        renderItem={renderPost}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-      />
     </SafeAreaView>
   );
 }
