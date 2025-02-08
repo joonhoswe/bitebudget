@@ -100,19 +100,29 @@ export default function SocialScreen() {
     };
   }, []);
 
-  const handleLike = (postId: number) => {
-    setPosts(
-      posts.map((post) => {
-        if (post.id === postId) {
-          return {
-            ...post,
-            likes: post.isLiked ? post.likes - 1 : post.likes + 1,
-            isLiked: !post.isLiked,
-          };
-        }
-        return post;
-      })
-    );
+  const handleLike = async (postId: number) => {
+    try {
+      const post = posts.find(p => p.id === postId);
+      if (!post) return;
+
+      const { error } = await supabase  
+        .from('transactions')
+        .update({ likes: post.isLiked ? post.likes - 1 : post.likes + 1 })
+        .eq('id', postId);
+        
+      if (error) {
+        console.error('Error updating likes:', error);
+        return;
+      }
+      
+      setPosts(posts.map(p => 
+        p.id === postId 
+          ? { ...p, likes: p.isLiked ? p.likes - 1 : p.likes + 1, isLiked: !p.isLiked }
+          : p
+      ));
+    } catch (err) {
+      console.error('Error in handleLike:', err);
+    }
   };
 
   const handlePost = async () => {
@@ -160,14 +170,13 @@ export default function SocialScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
+      <FlatList
+        data={posts}
+        renderItem={renderPost}
+        keyExtractor={(item) => item.id.toString()}
+        showsVerticalScrollIndicator={false}
+      />
       <View style={styles.newPostContainer}>
-        <FlatList
-          data={posts}
-          renderItem={renderPost}
-          keyExtractor={(item) => item.id.toString()}
-          showsVerticalScrollIndicator={false}
-        />
-
         <TextInput
           style={styles.input}
           value={newRestaurant}
@@ -203,11 +212,11 @@ const styles = StyleSheet.create({
   newPostContainer: {
     padding: 15,
     backgroundColor: "white",
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
   },
   input: {
-    height: 100,
+    height: 40,
     padding: 10,
     backgroundColor: "#f9f9f9",
     borderRadius: 10,
