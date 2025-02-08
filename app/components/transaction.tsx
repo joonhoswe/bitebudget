@@ -3,26 +3,23 @@ import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
 
 interface TransactionProps {
-    id: string;
+    id: number;
     restaurant: string;
     amount: number;
-    userId: string;
-    username: string;
-    userAvatar: string;
+    userID: string;
     timestamp: string;
     likes: number;
     comments: number;
     isLiked: boolean;
-    onLike: (id: string) => void;
-    onComment: (id: string) => void;
+    onLike: (id: number) => void;
+    onComment: (id: number) => void;
 }
 
 const Transaction: FC<TransactionProps> = ({
     id,
     restaurant,
     amount,
-    username,
-    userAvatar,
+    userID,
     timestamp,
     likes,
     comments,
@@ -38,9 +35,8 @@ const Transaction: FC<TransactionProps> = ({
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Image source={{ uri: userAvatar }} style={styles.avatar} />
                 <View style={styles.headerText}>
-                    <Text style={styles.username}>{username}</Text>
+                    <Text style={styles.username}>{userID}</Text>
                     <Text style={styles.timestamp}>{timestamp}</Text>
                 </View>
             </View>
