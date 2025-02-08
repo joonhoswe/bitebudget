@@ -46,7 +46,7 @@ const Login = () => {
     if (error) {
       Alert.alert(error.message);
     } else {
-      router.replace('../(tabs)/index');
+      router.replace('../(tabs)/social');
     }
     setLoading(false);
   }, [email, password, router]);
