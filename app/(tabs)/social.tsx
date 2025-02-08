@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
   View,
   Text,
@@ -7,9 +7,9 @@ import {
   FlatList,
   TextInput,
   StyleSheet,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type Post = {
   id: string;
@@ -24,60 +24,62 @@ type Post = {
 
 const DUMMY_DATA: Post[] = [
   {
-    id: '1',
-    username: 'johndoe',
-    userAvatar: 'https://i.pravatar.cc/150?img=1',
-    content: 'Just spent $15 at McDonalds!',
+    id: "1",
+    username: "johndoe",
+    userAvatar: "https://i.pravatar.cc/150?img=1",
+    content: "Just spent $15 at McDonalds!",
     likes: 42,
     comments: 5,
-    timeAgo: '2h',
+    timeAgo: "2h",
     isLiked: false,
   },
   {
-    id: '2',
-    username: 'janedoe',
-    userAvatar: 'https://i.pravatar.cc/150?img=2',
-    content: 'Just wasted $40 on a some steak...',
+    id: "2",
+    username: "janedoe",
+    userAvatar: "https://i.pravatar.cc/150?img=2",
+    content: "Just wasted $40 on a some steak...",
     likes: 28,
     comments: 3,
-    timeAgo: '4h',
+    timeAgo: "4h",
     isLiked: true,
   },
 ];
 
 export default function SocialScreen() {
   const [posts, setPosts] = useState<Post[]>(DUMMY_DATA);
-  const [newPost, setNewPost] = useState('');
+  const [newPost, setNewPost] = useState("");
 
   const handleLike = (postId: string) => {
-    setPosts(posts.map(post => {
-      if (post.id === postId) {
-        return {
-          ...post,
-          likes: post.isLiked ? post.likes - 1 : post.likes + 1,
-          isLiked: !post.isLiked,
-        };
-      }
-      return post;
-    }));
+    setPosts(
+      posts.map((post) => {
+        if (post.id === postId) {
+          return {
+            ...post,
+            likes: post.isLiked ? post.likes - 1 : post.likes + 1,
+            isLiked: !post.isLiked,
+          };
+        }
+        return post;
+      })
+    );
   };
 
   const handlePost = () => {
     if (!newPost.trim()) return;
-    
+
     const post: Post = {
       id: Date.now().toString(),
-      username: 'me',
-      userAvatar: 'https://i.pravatar.cc/150?img=3',
+      username: "me",
+      userAvatar: "https://i.pravatar.cc/150?img=3",
       content: newPost,
       likes: 0,
       comments: 0,
-      timeAgo: 'now',
+      timeAgo: "now",
       isLiked: false,
     };
 
     setPosts([post, ...posts]);
-    setNewPost('');
+    setNewPost("");
   };
 
   const renderPost = ({ item }: { item: Post }) => (
@@ -93,14 +95,14 @@ export default function SocialScreen() {
       <Text style={styles.content}>{item.content}</Text>
 
       <View style={styles.actions}>
-        <TouchableOpacity 
-          style={styles.actionButton} 
+        <TouchableOpacity
+          style={styles.actionButton}
           onPress={() => handleLike(item.id)}
         >
-          <Ionicons 
-            name={item.isLiked ? "heart" : "heart-outline"} 
-            size={24} 
-            color={item.isLiked ? "#ff4444" : "#666"} 
+          <Ionicons
+            name={item.isLiked ? "heart" : "heart-outline"}
+            size={24}
+            color={item.isLiked ? "#ff4444" : "#666"}
           />
           <Text style={styles.actionText}>{item.likes}</Text>
         </TouchableOpacity>
@@ -114,7 +116,7 @@ export default function SocialScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.newPostContainer}>
         <TextInput
           style={styles.input}
@@ -123,11 +125,8 @@ export default function SocialScreen() {
           placeholder="What's on your mind?"
           multiline
         />
-        <TouchableOpacity 
-          style={[
-            styles.postButton, 
-            { opacity: newPost.trim() ? 1 : 0.5 }
-          ]} 
+        <TouchableOpacity
+          style={[styles.postButton, { opacity: newPost.trim() ? 1 : 0.5 }]}
           onPress={handlePost}
           disabled={!newPost.trim()}
         >
@@ -138,7 +137,7 @@ export default function SocialScreen() {
       <FlatList
         data={posts}
         renderItem={renderPost}
-        keyExtractor={item => item.id}
+        keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
       />
     </SafeAreaView>
@@ -148,39 +147,39 @@ export default function SocialScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
   },
   newPostContainer: {
     padding: 15,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: "#eee",
   },
   input: {
     height: 100,
     padding: 10,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: "#f9f9f9",
     borderRadius: 10,
     marginBottom: 10,
   },
   postButton: {
-    backgroundColor: '#4CD964',
+    backgroundColor: "#4CD964",
     padding: 10,
     borderRadius: 5,
-    alignItems: 'center',
+    alignItems: "center",
   },
   postButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
+    color: "white",
+    fontWeight: "bold",
   },
   postContainer: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     padding: 15,
     marginBottom: 10,
   },
   postHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 10,
   },
   avatar: {
@@ -190,11 +189,11 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   username: {
-    fontWeight: 'bold',
+    fontWeight: "bold",
     fontSize: 16,
   },
   timeAgo: {
-    color: '#666',
+    color: "#666",
     fontSize: 12,
   },
   content: {
@@ -203,18 +202,18 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   actions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: "#eee",
     paddingTop: 10,
   },
   actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginRight: 20,
   },
   actionText: {
     marginLeft: 5,
-    color: '#666',
+    color: "#666",
   },
 });
