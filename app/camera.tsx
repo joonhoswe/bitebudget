@@ -11,6 +11,7 @@ import { AntDesign } from "@expo/vector-icons";
 import { Feather } from "@expo/vector-icons";
 import { FontAwesome6 } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { supabase } from "@/utils/supabase";
 
 export default function App() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -195,7 +196,6 @@ const styles = StyleSheet.create({
 async function sendImageToBackend(uri: string) {
   const formData = new FormData();
 
-  // Create file object with explicit type
   const fileToUpload = {
     uri: uri,
     type: "image/jpeg",
@@ -225,15 +225,30 @@ async function sendImageToBackend(uri: string) {
 
     const data = await response.json();
     console.log("Backend response:", data);
-    console.log(JSON.stringify(data))
-    console.log(data.raw_text)
-    console.log(data.raw_text.substring(26,33))
 
-    if (!data.raw_text) {
-      console.warn("No text was extracted from the image");
+    // Get current user from Supabase
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error("User not authenticated");
+      return;
     }
-    if (!data.total_spent) {
-      console.warn("No total was found in the extracted text");
+
+    // Create transaction in Supabase
+    const { error } = await supabase.from("transactions").insert([
+      {
+        userID: user.id,
+        restaurant: data.raw_text.substring(26, 33),
+        amount: data.total_spent.substring(8,11),
+        created_at: new Date().toISOString(),
+        likes: 0,
+        comments: 0,
+        is_liked: false,
+      },
+    ]);
+
+    if (error) {
+      console.error("Error creating transaction:", error.message);
+      return;
     }
 
     return data;
