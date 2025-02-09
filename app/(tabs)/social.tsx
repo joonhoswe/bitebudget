@@ -7,6 +7,8 @@ import {
   FlatList,
   TextInput,
   StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Transaction from '../components/transaction';
@@ -28,6 +30,7 @@ export default function SocialScreen() {
   const [newPost, setNewPost] = useState("");
   const [newRestaurant, setNewRestaurant] = useState("");
   const [newAmount, setNewAmount] = useState("");
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -100,6 +103,21 @@ export default function SocialScreen() {
     };
   }, []);
 
+  useEffect(() => {
+    getCurrentUser();
+  }, []);
+
+  const getCurrentUser = async () => {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error) {
+      console.error('Error getting user:', error.message);
+      return;
+    }
+    if (user) {
+      setUserId(user.id);
+    }
+  };
+
   const handleLike = async (postId: number) => {
     try {
       const post = posts.find(p => p.id === postId);
@@ -126,29 +144,33 @@ export default function SocialScreen() {
   };
 
   const handlePost = async () => {
-    if (!newRestaurant.trim() || !newAmount.trim()) return;
+    if (!userId) {
+      console.error('User not authenticated');
+      return;
+    }
 
-    try {
-      const { data, error } = await supabase
-        .from('transactions')
-        .insert({
+    const { error } = await supabase
+      .from('transactions')
+      .insert([
+        {
+          userID: userId,
           restaurant: newRestaurant,
           amount: parseFloat(newAmount),
-          userID: "currentUser",  // You'll want to replace this with actual user ID
-          created_at: new Date().toISOString()
-        })
-        .select()
-        .single();
+          created_at: new Date().toISOString(),
+          likes: 0,
+          comments: 0,
+          is_liked: false
+        },
+      ]);
 
-      if (error) throw error;
-
-      // Clear inputs
-      setNewRestaurant("");
-      setNewAmount("");
-      setNewPost("");
-    } catch (error) {
-      console.error('Error creating post:', error);
+    if (error) {
+      console.error('Error creating post:', error.message);
+      return;
     }
+
+    // Clear input fields after successful post
+    setNewRestaurant('');
+    setNewAmount('');
   };
 
   const renderPost = ({ item }: { item: Post }) => (
@@ -175,31 +197,37 @@ export default function SocialScreen() {
         renderItem={renderPost}
         keyExtractor={(item) => item.id.toString()}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 180 }}
       />
-      <View style={styles.newPostContainer}>
-        <TextInput
-          style={styles.input}
-          value={newRestaurant}
-          onChangeText={setNewRestaurant}
-          placeholder="Restaurant name"
-        />
-        <TextInput
-          style={styles.input}
-          value={newAmount}
-          onChangeText={setNewAmount}
-          placeholder="Amount spent"
-          keyboardType="decimal-pad"
-        />
-        <TouchableOpacity
-          style={[styles.postButton, { 
-            opacity: (newRestaurant.trim() && newAmount.trim()) ? 1 : 0.5 
-          }]}
-          onPress={handlePost}
-          disabled={!newRestaurant.trim() || !newAmount.trim()}
-        >
-          <Text style={styles.postButtonText}>Post</Text>
-        </TouchableOpacity>
-      </View>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.inputContainer}
+      >
+        <View style={styles.newPostContainer}>
+          <TextInput
+            style={styles.input}
+            value={newRestaurant}
+            onChangeText={setNewRestaurant}
+            placeholder="Restaurant name"
+          />
+          <TextInput
+            style={styles.input}
+            value={newAmount}
+            onChangeText={setNewAmount}
+            placeholder="Amount spent"
+            keyboardType="decimal-pad"
+          />
+          <TouchableOpacity
+            style={[styles.postButton, { 
+              opacity: (newRestaurant.trim() && newAmount.trim()) ? 1 : 0.5 
+            }]}
+            onPress={handlePost}
+            disabled={!newRestaurant.trim() || !newAmount.trim()}
+          >
+            <Text style={styles.postButtonText}>Post</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -209,11 +237,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f5f5f5",
   },
+  inputContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'white',
+  },
   newPostContainer: {
     padding: 15,
     backgroundColor: "white",
     borderTopWidth: 1,
     borderTopColor: "#eee",
+    marginBottom: Platform.OS === 'ios' ? 90 : 60,
   },
   input: {
     height: 40,
