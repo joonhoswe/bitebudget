@@ -1,7 +1,7 @@
-import { Stack, useRouter } from 'expo-router';
-import { Image, Text, TouchableOpacity, View } from 'react-native';
+import { Stack, useRouter } from "expo-router";
+import { Image, Text, TouchableOpacity, View } from "react-native";
 
-import logoImage from '@/assets/images/logo.png';
+import logoImage from "@/assets/images/logo.png";
 
 export default function Index() {
   const router = useRouter();
@@ -10,9 +10,9 @@ export default function Index() {
     <View
       style={{
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: "#FFFFFF",
         padding: 20,
-        justifyContent: 'center',
+        justifyContent: "center",
       }}
     >
       <Stack.Screen
@@ -26,27 +26,27 @@ export default function Index() {
         style={{
           width: 270,
           height: 270,
-          alignSelf: 'center',
+          alignSelf: "center",
           marginBottom: 30,
-          resizeMode: 'contain',
+          resizeMode: "contain",
         }}
       />
 
       <TouchableOpacity
         style={{
-          backgroundColor: '#4CD964',
+          backgroundColor: "#4CD964",
           padding: 15,
           borderRadius: 25,
-          alignItems: 'center',
+          alignItems: "center",
           marginBottom: 20,
         }}
-        onPress={() => router.push('./auth/login')}
+        onPress={() => router.push("./auth/login")}
       >
         <Text
           style={{
-            color: 'white',
+            color: "white",
             fontSize: 16,
-            fontFamily: 'InriaSans-Bold',
+            fontFamily: "InriaSans-Bold",
           }}
         >
           login
@@ -55,19 +55,19 @@ export default function Index() {
 
       <TouchableOpacity
         style={{
-          backgroundColor: '#4CD964',
+          backgroundColor: "#4CD964",
           padding: 15,
           borderRadius: 25,
-          alignItems: 'center',
+          alignItems: "center",
           marginBottom: 20,
         }}
-        onPress={() => router.push('/auth/signup')}
+        onPress={() => router.push("/auth/signup")}
       >
         <Text
           style={{
-            color: 'white',
+            color: "white",
             fontSize: 16,
-            fontFamily: 'InriaSans-Bold',
+            fontFamily: "InriaSans-Bold",
           }}
         >
           sign up

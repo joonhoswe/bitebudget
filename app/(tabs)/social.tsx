@@ -7,8 +7,6 @@ import {
   FlatList,
   TextInput,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Transaction from "../components/transaction";
@@ -20,6 +18,7 @@ type Post = {
   restaurant: string;
   amount: number;
   userID: string;
+  userEmail: string;
   timestamp: string;
   likes: number;
   comments: number;
@@ -74,7 +73,21 @@ export default function SocialScreen() {
           isLiked: false,
         }));
 
-        setPosts(formattedPosts);
+            return {
+              id: post.id,
+              restaurant: post.restaurant,
+              amount: post.amount,
+              userID: post.userID,
+              userEmail: emailData?.[0]?.email || "Unknown User",
+              timestamp: new Date(post.created_at).toLocaleString(),
+              likes: post.likes ?? 0,
+              comments: post.comments ?? 0,
+              isLiked: false,
+            };
+          })
+        );
+
+        setPosts(postsWithEmails);
       } catch (error) {
         console.error("Error:", error);
       }
@@ -125,7 +138,7 @@ export default function SocialScreen() {
       setUserId(user.id);
     }
   };
-
+  
   const handleLike = (postId: number) => {
     setPosts(
       posts.map((post) => {
@@ -142,10 +155,7 @@ export default function SocialScreen() {
   };
 
   const handlePost = async () => {
-    if (!userId) {
-      console.error('User not authenticated');
-      return;
-    }
+    if (!newRestaurant.trim() || !newAmount.trim()) return;
 
     if (!newRestaurant.trim() || !newAmount.trim()) return;
 
@@ -177,7 +187,7 @@ export default function SocialScreen() {
       id={item.id}
       restaurant={item.restaurant}
       amount={item.amount}
-      userID={item.userID}
+      userID={item.userEmail}
       timestamp={item.timestamp}
       likes={item.likes}
       comments={item.comments}
@@ -298,10 +308,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
     zIndex: 1000,
-    paddingBottom: Platform.OS === 'ios' ? 25 : 15,
+    paddingBottom: Platform.OS === 'ios' ? 25 : 15,a
   },
   input: {
-    height: 40,
+    height: 100,
     padding: 10,
     backgroundColor: "#f9f9f9",
     borderRadius: 10,
