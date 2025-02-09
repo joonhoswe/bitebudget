@@ -34,6 +34,89 @@ const chartData = {
 
 type TimeRange = "week" | "month" | "year";
 
+// Add these helper functions at the top of the file, before the component
+const getDateRangeData = (transactions: Transaction[], timeRange: TimeRange) => {
+  const now = new Date();
+  let startDate = new Date();
+  let labels: string[] = [];
+  
+  switch(timeRange) {
+    case 'week':
+      startDate.setDate(now.getDate() - 7);
+      // Create labels for last 7 days
+      labels = Array.from({length: 7}, (_, i) => {
+        const date = new Date(now);
+        date.setDate(date.getDate() - (6 - i));
+        return date.toLocaleDateString('en-US', { weekday: 'short' });
+      });
+      break;
+    case 'month':
+      startDate.setMonth(now.getMonth() - 1);
+      // Create labels for last 4 weeks
+      labels = Array.from({length: 4}, (_, i) => `Week ${i + 1}`);
+      break;
+    case 'year':
+      startDate.setFullYear(now.getFullYear() - 1);
+      // Create labels for last 12 months
+      labels = Array.from({length: 12}, (_, i) => {
+        const date = new Date(now);
+        date.setMonth(now.getMonth() - (11 - i));
+        return date.toLocaleDateString('en-US', { month: 'short' });
+      });
+      break;
+  }
+
+  return { startDate, labels };
+};
+
+const processTransactionData = (transactions: Transaction[], timeRange: TimeRange) => {
+  const now = new Date();
+  const { startDate, labels } = getDateRangeData(transactions, timeRange);
+  const filteredTransactions = transactions.filter(t => 
+    new Date(t.created_at) >= startDate
+  );
+
+  let data: number[] = [];
+  
+  switch(timeRange) {
+    case 'week':
+      // Group by day
+      data = Array(7).fill(0);
+      filteredTransactions.forEach(t => {
+        const date = new Date(t.created_at);
+        const dayIndex = 6 - Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+        if (dayIndex >= 0 && dayIndex < 7) {
+          data[dayIndex] += t.amount;
+        }
+      });
+      break;
+    case 'month':
+      // Group by week
+      data = Array(4).fill(0);
+      filteredTransactions.forEach(t => {
+        const date = new Date(t.created_at);
+        const weekIndex = 3 - Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24 * 7));
+        if (weekIndex >= 0 && weekIndex < 4) {
+          data[weekIndex] += t.amount;
+        }
+      });
+      break;
+    case 'year':
+      // Group by month
+      data = Array(12).fill(0);
+      filteredTransactions.forEach(t => {
+        const date = new Date(t.created_at);
+        const monthIndex = 11 - (now.getMonth() - date.getMonth() + (12 * (now.getFullYear() - date.getFullYear())));
+        if (monthIndex >= 0 && monthIndex < 12) {
+          data[monthIndex] += t.amount;
+        }
+      });
+      break;
+  }
+
+  return { labels, data };
+};
+
 export default function ProfileScreen() {
   const [user, setUser] = useState<any>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -42,6 +125,15 @@ export default function ProfileScreen() {
   const [timeRange, setTimeRange] = useState<TimeRange>("week");
 
   const slideAnim = useRef(new Animated.Value(0)).current;
+
+  // Remove the static chartData and make it dynamic
+  const [chartData, setChartData] = useState<{
+    labels: string[];
+    datasets: { data: number[] }[];
+  }>({
+    labels: [],
+    datasets: [{ data: [] }]
+  });
 
   const handleTimeRangeChange = (newRange: TimeRange) => {
     const rangeIndex = ["week", "month", "year"].indexOf(newRange);
@@ -54,6 +146,7 @@ export default function ProfileScreen() {
     setTimeRange(newRange);
   };
 
+  // Update the useEffect to include chart data processing
   useEffect(() => {
     const getUser = async () => {
       const {
@@ -62,10 +155,17 @@ export default function ProfileScreen() {
       setUser(currentUser);
       
       if (currentUser) {
-        // Fetch transactions for the current user
         const { data: userTransactions, error } = await supabase
           .from('transactions')
-          .select('*')
+          .select(`
+            id,
+            restaurant,
+            amount,
+            userID,
+            created_at,
+            likes,
+            comments
+          `)
           .eq('userID', currentUser.id)
           .order('created_at', { ascending: false });
 
@@ -74,17 +174,33 @@ export default function ProfileScreen() {
           return;
         }
 
-        setTransactions(userTransactions as Transaction[]);
+        const formattedTransactions = userTransactions.map(transaction => ({
+          id: transaction.id.toString(),
+          restaurant: transaction.restaurant,
+          amount: transaction.amount,
+          created_at: transaction.created_at,
+          type: "food" as const,
+          userID: transaction.userID
+        }));
+
+        setTransactions(formattedTransactions);
         
         // Calculate total spent
-        const total = userTransactions.reduce((sum, transaction) => 
+        const total = formattedTransactions.reduce((sum, transaction) => 
           sum + transaction.amount, 0
         );
         setTotalSpent(total);
+
+        // Process chart data
+        const { labels, data } = processTransactionData(formattedTransactions, timeRange);
+        setChartData({
+          labels,
+          datasets: [{ data }]
+        });
       }
     };
     getUser();
-  }, []);
+  }, [timeRange]); // Add timeRange as dependency to update chart when it changes
 
   const buttonWidth = (Dimensions.get("window").width - 40) / 3; // 40 is total horizontal padding
 
