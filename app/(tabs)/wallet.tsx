@@ -198,18 +198,32 @@ export default function WalletScreen() {
   const openPhantomApp = useCallback(async () => {
     try {
       if (Platform.OS === 'ios') {
-        // Create deep link URL for your app
-        const redirectUrl = Linking.createURL('phantom-login');
+        // Create deep link URL for your app with the correct scheme
+        const redirectUrl = Linking.createURL('phantom-login', {
+          scheme: 'bitebudget'
+        });
         
-        // Create the Phantom URL with required parameters
-        const phantomUrl = `https://phantom.app/ul/v1/connect?app_url=${encodeURIComponent(redirectUrl)}&dapp_encryption_public_key=your_encryption_key`;
+        // Try opening Phantom with the correct deep link format
+        const phantomUrl = `phantom://browse/${encodeURIComponent(`https://phantom.app/ul/v1/connect?app_url=${encodeURIComponent(redirectUrl)}`)}`;
         
-        const canOpenPhantom = await Linking.canOpenURL('phantom://');
-        if (canOpenPhantom) {
+        try {
           await Linking.openURL(phantomUrl);
-        } else {
-          Alert.alert('Error', 'Phantom wallet is not installed');
-          downloadPhantom();
+        } catch (err) {
+          // If opening Phantom fails, show install prompt
+          Alert.alert(
+            'Phantom Not Found',
+            'Please install Phantom wallet to continue',
+            [
+              {
+                text: 'Install Phantom',
+                onPress: downloadPhantom,
+              },
+              {
+                text: 'Cancel',
+                style: 'cancel',
+              },
+            ]
+          );
         }
       } else {
         // Existing Android implementation

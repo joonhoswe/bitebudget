@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yourcompany.bitebudget",
+      "bundleIdentifier": "com.bitebudget.app",
       "associatedDomains": [
         "applinks:bitebudget.app"
       ]
