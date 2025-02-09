@@ -98,7 +98,7 @@ export default function Leaderboard() {
         }}
       />
 
-      <View style={{ padding: 20 }}>  
+      <View style={{ padding: 20 }}>
         {/* Nav Bar Selector */}
         <View
           style={{
@@ -163,110 +163,6 @@ export default function Leaderboard() {
               discount hunter
             </Text>
           </TouchableOpacity>
-        </View>
-
-        {/* Podium Section */}
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "flex-end",
-            marginBottom: 30,
-            height: 200,
-          }}
-        >
-          {/* Second Place */}
-          <View style={{ alignItems: "center", flex: 1 }}>
-            <Image
-              source={profileImage}
-              style={{
-                width: 50,
-                height: 50,
-                borderRadius: 25,
-                marginBottom: 10,
-              }}
-            />
-            <View
-              style={{
-                backgroundColor: "#5CF4AE",
-                borderTopLeftRadius: 15,
-                borderTopRightRadius: 15,
-                width: "80%",
-                height: 120,
-                alignItems: "center",
-                paddingTop: 10,
-              }}
-            >
-              <Text style={{ color: "white", fontFamily: "InriaSans-Bold" }}>
-                Bob
-              </Text>
-              <Text style={{ color: "white", fontFamily: "InriaSans-Regular" }}>
-                354
-              </Text>
-            </View>
-          </View>
-
-          {/* First Place */}
-          <View style={{ alignItems: "center", flex: 1 }}>
-            <Image
-              source={profileImage}
-              style={{
-                width: 50,
-                height: 50,
-                borderRadius: 25,
-                marginBottom: 10,
-              }}
-            />
-            <View
-              style={{
-                backgroundColor: "#3ADC91",
-                borderTopLeftRadius: 15,
-                borderTopRightRadius: 15,
-                width: "80%",
-                height: 150,
-                alignItems: "center",
-                paddingTop: 10,
-              }}
-            >
-              <Text style={{ color: "white", fontFamily: "InriaSans-Bold" }}>
-                Bob
-              </Text>
-              <Text style={{ color: "white", fontFamily: "InriaSans-Regular" }}>
-                584
-              </Text>
-            </View>
-          </View>
-
-          {/* Third Place */}
-          <View style={{ alignItems: "center", flex: 1 }}>
-            <Image
-              source={profileImage}
-              style={{
-                width: 50,
-                height: 50,
-                borderRadius: 25,
-                marginBottom: 10,
-              }}
-            />
-            <View
-              style={{
-                backgroundColor: "#90DBB9",
-                borderTopLeftRadius: 15,
-                borderTopRightRadius: 15,
-                width: "80%",
-                height: 90,
-                alignItems: "center",
-                paddingTop: 10,
-              }}
-            >
-              <Text style={{ color: "white", fontFamily: "InriaSans-Bold" }}>
-                Bob
-              </Text>
-              <Text style={{ color: "white", fontFamily: "InriaSans-Regular" }}>
-                187
-              </Text>
-            </View>
-          </View>
         </View>
 
         {/* List Section */}
