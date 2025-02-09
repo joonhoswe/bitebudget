@@ -245,7 +245,6 @@ export default function SocialScreen() {
           renderItem={renderPost}
           keyExtractor={(item) => item.id.toString()}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 100 }}
         />
       ) : (
         <Friends />

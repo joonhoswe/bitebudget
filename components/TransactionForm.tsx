@@ -119,6 +119,8 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderRadius: 10,
     padding: 20,
+    paddingBottom: 30,
+    minHeight: 250,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -152,10 +154,10 @@ const styles = StyleSheet.create({
   },
   postButton: {
     backgroundColor: "#4CD964",
-    padding: 10,
+    padding: 15,
     borderRadius: 8,
     alignItems: "center",
-    marginTop: 10,
+    marginTop: 20,
   },
   postButtonText: {
     color: "white",
