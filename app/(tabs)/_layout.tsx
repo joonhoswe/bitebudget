@@ -8,6 +8,13 @@ import TabBarBackground from "@/components/ui/TabBarBackground";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 
+const TabBarIcon = ({ name, color, title }: { name: keyof typeof Ionicons.glyphMap; color: string; title: string }) => (
+  <React.Fragment>
+    <Ionicons name={name} size={30} color={color} />
+    <Text numberOfLines={1} style={{ color, fontSize: 9, marginTop: 2 }}>{title}</Text>
+  </React.Fragment>
+);
+
 export default function TabLayout() {
   const colorScheme = useColorScheme();
 
