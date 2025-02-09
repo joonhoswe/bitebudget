@@ -1,5 +1,5 @@
-import { Stack, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { Stack, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   Alert,
   Image,
@@ -7,22 +7,22 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
+} from "react-native";
 
-import logoImage from '../../assets/images/logo.png';
-import { supabase } from '../../utils/supabase';
+import logoImage from "../../assets/images/logo.png";
+import { supabase } from "../../utils/supabase";
 
 const SignUp = () => {
   const router = useRouter();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   const signUpWithEmail = useCallback(async () => {
     if (password !== confirmPassword) {
-      Alert.alert('Passwords do not match!');
+      Alert.alert("Passwords do not match!");
       return;
     }
 
@@ -38,7 +38,7 @@ const SignUp = () => {
     if (error) {
       Alert.alert(error.message);
     } else {
-      Alert.alert('Registration Successful');
+      Alert.alert("Registration Successful");
     }
     setLoading(false);
   }, [email, password, confirmPassword, name]);
@@ -47,9 +47,9 @@ const SignUp = () => {
     <View
       style={{
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: "#FFFFFF",
         padding: 20,
-        justifyContent: 'center',
+        justifyContent: "center",
       }}
     >
       <Stack.Screen
@@ -63,9 +63,9 @@ const SignUp = () => {
         style={{
           width: 270,
           height: 270,
-          alignSelf: 'center',
+          alignSelf: "center",
           marginBottom: 30,
-          resizeMode: 'contain',
+          resizeMode: "contain",
         }}
       />
 
@@ -75,12 +75,12 @@ const SignUp = () => {
         value={name}
         onChangeText={setName}
         style={{
-          backgroundColor: '#F0F0F0',
+          backgroundColor: "#F0F0F0",
           padding: 15,
           borderRadius: 25,
           marginBottom: 15,
-          color: '#333333',
-          fontFamily: 'InriaSans-Regular',
+          color: "#333333",
+          fontFamily: "InriaSans-Regular",
         }}
         autoCapitalize="words"
       />
@@ -91,12 +91,12 @@ const SignUp = () => {
         value={email}
         onChangeText={setEmail}
         style={{
-          backgroundColor: '#F0F0F0',
+          backgroundColor: "#F0F0F0",
           padding: 15,
           borderRadius: 25,
           marginBottom: 15,
-          color: '#333333',
-          fontFamily: 'InriaSans-Regular',
+          color: "#333333",
+          fontFamily: "InriaSans-Regular",
         }}
         autoCapitalize="none"
       />
@@ -108,12 +108,12 @@ const SignUp = () => {
         onChangeText={setPassword}
         secureTextEntry
         style={{
-          backgroundColor: '#F0F0F0',
+          backgroundColor: "#F0F0F0",
           padding: 15,
           borderRadius: 25,
           marginBottom: 15,
-          color: '#333333',
-          fontFamily: 'InriaSans-Regular',
+          color: "#333333",
+          fontFamily: "InriaSans-Regular",
         }}
         autoCapitalize="none"
       />
@@ -125,22 +125,22 @@ const SignUp = () => {
         onChangeText={setConfirmPassword}
         secureTextEntry
         style={{
-          backgroundColor: '#F0F0F0',
+          backgroundColor: "#F0F0F0",
           padding: 15,
           borderRadius: 25,
           marginBottom: 25,
-          color: '#333333',
-          fontFamily: 'InriaSans-Regular',
+          color: "#333333",
+          fontFamily: "InriaSans-Regular",
         }}
         autoCapitalize="none"
       />
 
       <TouchableOpacity
         style={{
-          backgroundColor: '#4CD964',
+          backgroundColor: "#4CD964",
           padding: 15,
           borderRadius: 25,
-          alignItems: 'center',
+          alignItems: "center",
           marginBottom: 20,
         }}
         onPress={signUpWithEmail}
@@ -148,29 +148,29 @@ const SignUp = () => {
       >
         <Text
           style={{
-            color: 'white',
+            color: "white",
             fontSize: 16,
-            fontFamily: 'InriaSans-Bold',
+            fontFamily: "InriaSans-Bold",
           }}
         >
           sign up
         </Text>
       </TouchableOpacity>
 
-      <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
+      <View style={{ flexDirection: "row", justifyContent: "center" }}>
         <Text
           style={{
-            color: '#666666',
-            fontFamily: 'InriaSans-Regular',
+            color: "#666666",
+            fontFamily: "InriaSans-Regular",
           }}
         >
-          already have an account?{' '}
+          already have an account?{" "}
         </Text>
-        <TouchableOpacity onPress={() => router.push('./login')}>
+        <TouchableOpacity onPress={() => router.push("./login")}>
           <Text
             style={{
-              color: '#4CD964',
-              fontFamily: 'InriaSans-Bold',
+              color: "#4CD964",
+              fontFamily: "InriaSans-Bold",
             }}
           >
             login!
