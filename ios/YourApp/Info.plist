@@ -1,0 +1,9 @@
+<key>CFBundleURLTypes</key>
+<array>
+  <dict>
+    <key>CFBundleURLSchemes</key>
+    <array>
+      <string>bitebudget</string>
+    </array>
+  </dict>
+</array> 

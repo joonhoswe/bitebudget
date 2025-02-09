@@ -10,14 +10,41 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.bitebudget.app"
+      "bundleIdentifier": "com.bitebudget.app",
+      "associatedDomains": [
+        "applinks:bitebudget.app",
+        "applinks:phantom.app"
+      ],
+      "usesNonExemptEncryption": false,
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "bitebudget"
+            ]
+          }
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.bitebudget.app"
+      "package": "com.yourcompany.bitebudget",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "bitebudget",
+              "host": "wallet"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "bundler": "metro",
