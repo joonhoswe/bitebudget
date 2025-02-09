@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Transaction from "../components/transaction";
 import { supabase } from "@/utils/supabase";
+import Friends from "../components/Friends";
 
 type Post = {
   id: number;
@@ -31,6 +32,7 @@ export default function SocialScreen() {
   const [newRestaurant, setNewRestaurant] = useState("");
   const [newAmount, setNewAmount] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"feed" | "friends">("feed");
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -205,45 +207,80 @@ export default function SocialScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <FlatList
-        data={posts}
-        renderItem={renderPost}
-        keyExtractor={(item) => item.id.toString()}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 180 }}
-      />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.inputContainer}
-      >
-        <View style={styles.newPostContainer}>
-          <TextInput
-            style={styles.input}
-            value={newRestaurant}
-            onChangeText={setNewRestaurant}
-            placeholder="Restaurant name"
-          />
-          <TextInput
-            style={styles.input}
-            value={newAmount}
-            onChangeText={setNewAmount}
-            placeholder="Amount spent"
-            keyboardType="decimal-pad"
-          />
-          <TouchableOpacity
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "feed" && styles.activeTab]}
+          onPress={() => setActiveTab("feed")}
+        >
+          <Text
             style={[
-              styles.postButton,
-              {
-                opacity: newRestaurant.trim() && newAmount.trim() ? 1 : 0.5,
-              },
+              styles.tabText,
+              activeTab === "feed" && styles.activeTabText,
             ]}
-            onPress={handlePost}
-            disabled={!newRestaurant.trim() || !newAmount.trim()}
           >
-            <Text style={styles.postButtonText}>Post</Text>
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
+            Feed
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "friends" && styles.activeTab]}
+          onPress={() => setActiveTab("friends")}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "friends" && styles.activeTabText,
+            ]}
+          >
+            Friends
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {activeTab === "feed" ? (
+        <>
+          <FlatList
+            data={posts}
+            renderItem={renderPost}
+            keyExtractor={(item) => item.id.toString()}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 180 }}
+          />
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.inputContainer}
+          >
+            <View style={styles.newPostContainer}>
+              <TextInput
+                style={styles.input}
+                value={newRestaurant}
+                onChangeText={setNewRestaurant}
+                placeholder="Restaurant name"
+              />
+              <TextInput
+                style={styles.input}
+                value={newAmount}
+                onChangeText={setNewAmount}
+                placeholder="Amount spent"
+                keyboardType="decimal-pad"
+              />
+              <TouchableOpacity
+                style={[
+                  styles.postButton,
+                  {
+                    opacity: newRestaurant.trim() && newAmount.trim() ? 1 : 0.5,
+                  },
+                ]}
+                onPress={handlePost}
+                disabled={!newRestaurant.trim() || !newAmount.trim()}
+              >
+                <Text style={styles.postButtonText}>Post</Text>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </>
+      ) : (
+        <Friends />
+      )}
     </SafeAreaView>
   );
 }
@@ -327,5 +364,28 @@ const styles = StyleSheet.create({
   actionText: {
     marginLeft: 5,
     color: "#666",
+  },
+  tabContainer: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    backgroundColor: "white",
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 15,
+    alignItems: "center",
+  },
+  activeTab: {
+    borderBottomWidth: 2,
+    borderBottomColor: "#4CD964",
+  },
+  tabText: {
+    color: "#666666",
+    fontSize: 16,
+  },
+  activeTabText: {
+    color: "#4CD964",
+    fontWeight: "bold",
   },
 });
