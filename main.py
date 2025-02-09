@@ -2,19 +2,20 @@ import os
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from transformers import DonutProcessor, VisionEncoderDecoderModel
 from io import BytesIO
-from PIL import Image
+from PIL import Image, ImageEnhance, ImageOps
 import uvicorn
+import re
 from typing import Dict, Any
 import torch
 
 app = FastAPI(title="Receipt Extractor API")
 
-# Initialize processor and model globally
+# Load Donut model and processor
 try:
-    processor = DonutProcessor.from_pretrained("naver-clova-ix/donut-base")
-    model = VisionEncoderDecoderModel.from_pretrained("naver-clova-ix/donut-base")
+    processor = DonutProcessor.from_pretrained("fahmiaziz/finetune-donut-cord-v2.5")
+    model = VisionEncoderDecoderModel.from_pretrained("fahmiaziz/finetune-donut-cord-v2.5")
     
-    # Set the prompt for receipt recognition
+    # Set decoding parameters
     task_prompt = "<s_receipt>Extract text from this receipt:"
     processor.decoder_start_token_id = processor.tokenizer.convert_tokens_to_ids(['<s>'])[0]
     processor.tokenizer.pad_token = processor.tokenizer.eos_token
@@ -23,34 +24,37 @@ except Exception as e:
     raise
 
 def preprocess_image(image: Image.Image) -> Image.Image:
-    """Preprocess the image to match model requirements."""
-    # Convert to RGB if image is in a different mode
-    if image.mode != 'RGB':
-        image = image.convert('RGB')
-    
-    # Resize image while maintaining aspect ratio
-    target_size = (1024, 1024)  # Donut typically expects images around this size
+    """Enhance image for better OCR performance."""
+    # Convert to grayscale and enhance contrast
+    image = image.convert("L")  # Convert to grayscale
+    image = ImageEnhance.Contrast(image).enhance(2.0)  # Increase contrast
+    image = ImageOps.invert(image)  # Invert colors for better text recognition
+
+    # Convert back to RGB for model compatibility
+    image = image.convert("RGB")
+
+    # Resize while maintaining aspect ratio
+    target_size = (1024, 1024)
     image.thumbnail(target_size, Image.LANCZOS)
-    
-    # Add padding to make it square if needed
-    if image.size[0] != image.size[1]:
-        new_image = Image.new('RGB', (max(image.size), max(image.size)), (255, 255, 255))
-        new_image.paste(image, ((max(image.size) - image.size[0]) // 2,
-                               (max(image.size) - image.size[1]) // 2))
-        image = new_image
-    
-    return image
+
+    # Ensure it's a square image (Donut expects square input)
+    new_image = Image.new('RGB', target_size, (255, 255, 255))
+    new_image.paste(image, ((target_size[0] - image.size[0]) // 2, (target_size[1] - image.size[1]) // 2))
+
+    return new_image
 
 async def process_image(image: Image.Image) -> str:
-    """Process an image through the Donut model and return the generated text."""
+    """Run the image through Donut and extract text."""
     try:
-        # Preprocess the image
+        # Preprocess image
         image = preprocess_image(image)
-        
-        # Process with the model
+
+        # Prepare input for Donut
         inputs = processor(image, text=task_prompt, return_tensors="pt")
-        
-        # Generate text
+
+        print("Running model inference...")  # Debugging
+
+        # Generate output from model
         outputs = model.generate(
             inputs.pixel_values,
             max_length=512,
@@ -62,78 +66,75 @@ async def process_image(image: Image.Image) -> str:
             bad_words_ids=[[processor.tokenizer.unk_token_id]],
             return_dict_in_generate=True,
         )
-        
-        # Decode the generated ids to text
-        generated_text = processor.batch_decode(
-            outputs.sequences,
-            skip_special_tokens=True
-        )[0]
-        
-        print(f"Generated text: {generated_text}")  # Debug print
+
+        # Decode generated text
+        generated_text = processor.batch_decode(outputs.sequences, skip_special_tokens=True)[0]
+
+        print(f"\nExtracted Text:\n{generated_text}\n")  # Debugging
+
         return generated_text
         
     except Exception as e:
-        print(f"Error in process_image: {str(e)}")
+        print(f"Error processing image: {str(e)}")
         raise
 
 def extract_total(text: str) -> str:
-    """Extract the total amount from the receipt text."""
+    """Extract total amount from receipt text."""
     if not text:
         return None
-        
-    lines = text.split('\n')
+
+    lines = text.split("\n")
+    
+    total_patterns = ["total", "amount", "due", "tend", "sub total", "amount paid"]
+    
     for line in lines:
-        # Look for common total patterns
-        lower_line = line.lower()
-        if any(pattern in lower_line for pattern in ['total', 'amount', 'sum', 'due', 'tend', 'subtotal']):
-            # Try to extract number
-            import re
-            numbers = re.findall(r'\d+\.\d{2}', line)
+        lower_line = line.lower().strip()
+
+        # Match against total-related keywords
+        if any(keyword in lower_line for keyword in total_patterns):
+            numbers = re.findall(r"\d+\.\d{2}", line)
             if numbers:
-                return f"Total: ${numbers[-1]}"  # Return the last number if multiple found
+                print(f"Matched Total Line: {line}")  # Debugging
+                return f"Total: ${numbers[-1]}"  # Pick last amount in case of multiple
+    
+    # Fallback: Get the largest number found (which is likely the total)
+    all_numbers = re.findall(r"\d+\.\d{2}", text)
+    if all_numbers:
+        largest_total = max(map(float, all_numbers))
+        return f"Total: ${largest_total:.2f}"
+    
     return None
 
 @app.post("/extract-receipt/")
 async def extract_receipt(file: UploadFile = File(...)) -> Dict[str, Any]:
     """Extract information from a receipt image."""
     try:
-        # Validate file type
         if not file.content_type.startswith('image/'):
-            raise HTTPException(
-                status_code=400,
-                detail="File must be an image"
-            )
-        
-        # Read and process image
+            raise HTTPException(status_code=400, detail="File must be an image")
+
         image_bytes = await file.read()
         try:
             image = Image.open(BytesIO(image_bytes))
         except Exception as e:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid image format: {str(e)}"
-            )
-        
+            raise HTTPException(status_code=400, detail=f"Invalid image format: {str(e)}")
+
         # Process image through model
         result_text = await process_image(image)
-        
+
         # Extract total
         total_spent = extract_total(result_text)
-        
+
         return {
             "status": "success",
             "total_spent": total_spent,
             "raw_text": result_text,
-            "image_size": f"{image.size[0]}x{image.size[1]}"  # Debug info
+            "image_size": f"{image.size[0]}x{image.size[1]}"
         }
-        
+
     except HTTPException as e:
         raise e
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error processing receipt: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error processing receipt: {str(e)}")
 
 @app.get("/health")
 async def health_check() -> Dict[str, str]:

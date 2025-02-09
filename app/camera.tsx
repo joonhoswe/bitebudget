@@ -10,7 +10,7 @@ import { Image } from "expo-image";
 import { AntDesign } from "@expo/vector-icons";
 import { Feather } from "@expo/vector-icons";
 import { FontAwesome6 } from "@expo/vector-icons";
-import * as ImagePicker from 'expo-image-picker';
+import * as ImagePicker from "expo-image-picker";
 
 export default function App() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -79,6 +79,7 @@ export default function App() {
         />
         <Button onPress={() => setUri(null)} title="Take another picture" />
         <Button onPress={parsePhoto} title="Parse Photo" />
+        <Button onPress={selectPhoto} title="Upload from Library" />
       </View>
     );
   };
@@ -90,8 +91,8 @@ export default function App() {
       quality: 1,
     });
 
-    console.log('Image Picker Result:', result);
-    
+    console.log("Image Picker Result:", result);
+
     if (!result.canceled) {
       const selectedUri = result.assets[0].uri;
       setUri(selectedUri);
@@ -193,24 +194,48 @@ const styles = StyleSheet.create({
 
 async function sendImageToBackend(uri: string) {
   const formData = new FormData();
-  formData.append('file', {
-    uri,
-    name: 'photo.jpg',
-    type: 'image/jpeg',
-  });
+
+  // Create file object with explicit type
+  const fileToUpload = {
+    uri: uri,
+    type: "image/jpeg",
+    name: "receipt.jpg",
+  };
+
+  formData.append("file", fileToUpload as any);
+
+  console.log("Sending image to backend:", uri);
 
   try {
-    const response = await fetch('http://127.0.0.1:8080/extract-receipt/', {
-      method: 'POST',
+    const response = await fetch("http://127.0.0.1:8080/extract-receipt/", {
+      method: "POST",
       body: formData,
       headers: {
-        'Content-Type': 'multipart/form-data',
+        Accept: "application/json",
+        "Content-Type": "multipart/form-data",
       },
     });
 
+    if (!response.ok) {
+      console.error("Server error:", response.status, response.statusText);
+      const errorText = await response.text();
+      console.error("Error details:", errorText);
+      return;
+    }
+
     const data = await response.json();
-    console.log('Image processed:', data);
+    console.log("Backend response:", data);
+
+    if (!data.raw_text) {
+      console.warn("No text was extracted from the image");
+    }
+    if (!data.total_spent) {
+      console.warn("No total was found in the extracted text");
+    }
+
+    return data;
   } catch (error) {
-    console.error('Error sending image to backend:', error);
+    console.error("Error sending image to backend:", error);
+    throw error;
   }
 }
