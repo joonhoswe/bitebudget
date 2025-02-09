@@ -6,12 +6,14 @@ import {
   TouchableOpacity,
   View,
   Dimensions,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import SpendingChart from "../../components/SpendingChart";
 import TransactionList from "../../components/TransactionList";
 import { supabase } from "../../utils/supabase";
+import Budget from "@/components/Budget";
 
 // Add Transaction type definition
 type Transaction = {
@@ -35,33 +37,36 @@ const chartData = {
 type TimeRange = "week" | "month" | "year";
 
 // Add these helper functions at the top of the file, before the component
-const getDateRangeData = (transactions: Transaction[], timeRange: TimeRange) => {
+const getDateRangeData = (
+  transactions: Transaction[],
+  timeRange: TimeRange
+) => {
   const now = new Date();
   let startDate = new Date();
   let labels: string[] = [];
-  
-  switch(timeRange) {
-    case 'week':
+
+  switch (timeRange) {
+    case "week":
       startDate.setDate(now.getDate() - 7);
       // Create labels for last 7 days
-      labels = Array.from({length: 7}, (_, i) => {
+      labels = Array.from({ length: 7 }, (_, i) => {
         const date = new Date(now);
         date.setDate(date.getDate() - (6 - i));
-        return date.toLocaleDateString('en-US', { weekday: 'short' });
+        return date.toLocaleDateString("en-US", { weekday: "short" });
       });
       break;
-    case 'month':
+    case "month":
       startDate.setMonth(now.getMonth() - 1);
       // Create labels for last 4 weeks
-      labels = Array.from({length: 4}, (_, i) => `Week ${i + 1}`);
+      labels = Array.from({ length: 4 }, (_, i) => `Week ${i + 1}`);
       break;
-    case 'year':
+    case "year":
       startDate.setFullYear(now.getFullYear() - 1);
       // Create labels for last 12 months
-      labels = Array.from({length: 12}, (_, i) => {
+      labels = Array.from({ length: 12 }, (_, i) => {
         const date = new Date(now);
         date.setMonth(now.getMonth() - (11 - i));
-        return date.toLocaleDateString('en-US', { month: 'short' });
+        return date.toLocaleDateString("en-US", { month: "short" });
       });
       break;
   }
@@ -69,44 +74,57 @@ const getDateRangeData = (transactions: Transaction[], timeRange: TimeRange) => 
   return { startDate, labels };
 };
 
-const processTransactionData = (transactions: Transaction[], timeRange: TimeRange) => {
+const processTransactionData = (
+  transactions: Transaction[],
+  timeRange: TimeRange
+) => {
   const now = new Date();
   const { startDate, labels } = getDateRangeData(transactions, timeRange);
-  const filteredTransactions = transactions.filter(t => 
-    new Date(t.created_at) >= startDate
+  const filteredTransactions = transactions.filter(
+    (t) => new Date(t.created_at) >= startDate
   );
 
   let data: number[] = [];
-  
-  switch(timeRange) {
-    case 'week':
+
+  switch (timeRange) {
+    case "week":
       // Group by day
       data = Array(7).fill(0);
-      filteredTransactions.forEach(t => {
+      filteredTransactions.forEach((t) => {
         const date = new Date(t.created_at);
-        const dayIndex = 6 - Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+        const dayIndex =
+          6 -
+          Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
         if (dayIndex >= 0 && dayIndex < 7) {
           data[dayIndex] += t.amount;
         }
       });
       break;
-    case 'month':
+    case "month":
       // Group by week
       data = Array(4).fill(0);
-      filteredTransactions.forEach(t => {
+      filteredTransactions.forEach((t) => {
         const date = new Date(t.created_at);
-        const weekIndex = 3 - Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24 * 7));
+        const weekIndex =
+          3 -
+          Math.floor(
+            (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24 * 7)
+          );
         if (weekIndex >= 0 && weekIndex < 4) {
           data[weekIndex] += t.amount;
         }
       });
       break;
-    case 'year':
+    case "year":
       // Group by month
       data = Array(12).fill(0);
-      filteredTransactions.forEach(t => {
+      filteredTransactions.forEach((t) => {
         const date = new Date(t.created_at);
-        const monthIndex = 11 - (now.getMonth() - date.getMonth() + (12 * (now.getFullYear() - date.getFullYear())));
+        const monthIndex =
+          11 -
+          (now.getMonth() -
+            date.getMonth() +
+            12 * (now.getFullYear() - date.getFullYear()));
         if (monthIndex >= 0 && monthIndex < 12) {
           data[monthIndex] += t.amount;
         }
@@ -123,6 +141,8 @@ export default function ProfileScreen() {
   const [totalSpent, setTotalSpent] = useState(0);
   const [isBarChart, setIsBarChart] = useState(true);
   const [timeRange, setTimeRange] = useState<TimeRange>("week");
+  const [isBudgetModalVisible, setIsBudgetModalVisible] = useState(false);
+  const [budget, setBudget] = useState(0);
 
   const slideAnim = useRef(new Animated.Value(0)).current;
 
@@ -132,7 +152,7 @@ export default function ProfileScreen() {
     datasets: { data: number[] }[];
   }>({
     labels: [],
-    datasets: [{ data: [] }]
+    datasets: [{ data: [] }],
   });
 
   const handleTimeRangeChange = (newRange: TimeRange) => {
@@ -153,11 +173,12 @@ export default function ProfileScreen() {
         data: { user: currentUser },
       } = await supabase.auth.getUser();
       setUser(currentUser);
-      
+
       if (currentUser) {
         const { data: userTransactions, error } = await supabase
-          .from('transactions')
-          .select(`
+          .from("transactions")
+          .select(
+            `
             id,
             restaurant,
             amount,
@@ -165,44 +186,63 @@ export default function ProfileScreen() {
             created_at,
             likes,
             comments
-          `)
-          .eq('userID', currentUser.id)
-          .order('created_at', { ascending: false });
+          `
+          )
+          .eq("userID", currentUser.id)
+          .order("created_at", { ascending: false });
 
         if (error) {
-          console.error('Error fetching transactions:', error);
+          console.error("Error fetching transactions:", error);
           return;
         }
 
-        const formattedTransactions = userTransactions.map(transaction => ({
+        const formattedTransactions = userTransactions.map((transaction) => ({
           id: transaction.id.toString(),
           restaurant: transaction.restaurant,
           amount: transaction.amount,
           created_at: transaction.created_at,
           type: "food" as const,
-          userID: transaction.userID
+          userID: transaction.userID,
         }));
 
         setTransactions(formattedTransactions);
-        
+
         // Calculate total spent
-        const total = formattedTransactions.reduce((sum, transaction) => 
-          sum + transaction.amount, 0
+        const total = formattedTransactions.reduce(
+          (sum, transaction) => sum + transaction.amount,
+          0
         );
         setTotalSpent(total);
 
         // Process chart data
-        const { labels, data } = processTransactionData(formattedTransactions, timeRange);
+        const { labels, data } = processTransactionData(
+          formattedTransactions,
+          timeRange
+        );
         setChartData({
           labels,
-          datasets: [{ data }]
+          datasets: [{ data }],
         });
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("budget")
+          .eq("id", currentUser.id)
+          .single();
+
+        if (profile) {
+          setBudget(profile.budget || 0);
+        }
       }
     };
     getUser();
   }, [timeRange]); // Add timeRange as dependency to update chart when it changes
 
   const buttonWidth = (Dimensions.get("window").width - 40) / 3; // 40 is total horizontal padding
+
+  const handleBudgetUpdate = (newBudget: number) => {
+    setBudget(newBudget);
+  };
 
   return (
     <SafeAreaView
@@ -283,27 +323,18 @@ export default function ProfileScreen() {
           ))}
         </View>
 
-        {/* Amount Display */}
-        <View style={{ marginBottom: 30 }}>
-          <Text
-            style={{
-              fontSize: 36,
-              fontFamily: "InriaSans-Bold",
-              color: "#333333",
-            }}
+        {/* Amount Display and Budget Button */}
+        <View style={styles.headerContainer}>
+          <View>
+            <Text style={styles.amountText}>${totalSpent.toFixed(2)}</Text>
+            <Text style={styles.labelText}>Total Spent</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.budgetButton}
+            onPress={() => setIsBudgetModalVisible(true)}
           >
-            ${totalSpent.toFixed(2)}
-          </Text>
-          <Text
-            style={{
-              fontSize: 14,
-              fontFamily: "InriaSans-Regular",
-              color: "#666666",
-              marginTop: 5,
-            }}
-          >
-            Total Spent
-          </Text>
+            <Text style={styles.budgetButtonText}>Budget: ${budget}</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Chart */}
@@ -331,6 +362,44 @@ export default function ProfileScreen() {
         {/* Transactions List */}
         <TransactionList transactions={transactions} />
       </View>
+
+      <Budget
+        isVisible={isBudgetModalVisible}
+        onClose={() => setIsBudgetModalVisible(false)}
+        currentBudget={budget}
+        onBudgetUpdate={handleBudgetUpdate}
+      />
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  headerContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 30,
+    paddingHorizontal: 20,
+  },
+  amountText: {
+    fontSize: 36,
+    fontFamily: "InriaSans-Bold",
+    color: "#333333",
+  },
+  labelText: {
+    fontSize: 14,
+    fontFamily: "InriaSans-Regular",
+    color: "#666666",
+    marginTop: 5,
+  },
+  budgetButton: {
+    backgroundColor: "#4CD964",
+    padding: 12,
+    borderRadius: 8,
+  },
+  budgetButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+});

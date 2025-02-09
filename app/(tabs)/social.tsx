@@ -11,7 +11,7 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Transaction from '../components/transaction';
+import Transaction from "../components/transaction";
 import { supabase } from "@/utils/supabase";
 
 type Post = {
@@ -36,8 +36,9 @@ export default function SocialScreen() {
     const fetchPosts = async () => {
       try {
         const { data, error } = await supabase
-          .from('transactions')
-          .select(`
+          .from("transactions")
+          .select(
+            `
             id,
             restaurant,
             amount,
@@ -45,12 +46,13 @@ export default function SocialScreen() {
             created_at,
             likes,
             comments
-          `)
-          .order('created_at', { ascending: false })
+          `
+          )
+          .order("created_at", { ascending: false })
           .limit(50);
 
         if (error) {
-          console.error('Error fetching posts:', error);
+          console.error("Error fetching posts:", error);
           return;
         }
 
@@ -59,7 +61,7 @@ export default function SocialScreen() {
           return;
         }
 
-        const formattedPosts: Post[] = data.map(post => ({
+        const formattedPosts: Post[] = data.map((post) => ({
           id: post.id,
           restaurant: post.restaurant,
           amount: post.amount,
@@ -67,33 +69,37 @@ export default function SocialScreen() {
           timestamp: new Date(post.created_at).toLocaleString(),
           likes: post.likes ?? 0,
           comments: post.comments ?? 0,
-          isLiked: false
+          isLiked: false,
         }));
 
         setPosts(formattedPosts);
       } catch (error) {
-        console.error('Error:', error);
+        console.error("Error:", error);
       }
     };
 
     fetchPosts();
 
     const subscription = supabase
-      .channel('transactions_channel')
-      .on('postgres_changes', 
-        { event: 'INSERT', schema: 'public', table: 'transactions' },
+      .channel("transactions_channel")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "transactions" },
         (payload) => {
           const newTransaction = payload.new;
-          setPosts(currentPosts => [{
-            id: newTransaction.id,
-            restaurant: newTransaction.restaurant,
-            amount: newTransaction.amount,
-            userID: newTransaction.userID,
-            timestamp: new Date(newTransaction.created_at).toLocaleString(),
-            likes: newTransaction.likes ?? 0,
-            comments: newTransaction.comments ?? 0,
-            isLiked: false
-          }, ...currentPosts]);
+          setPosts((currentPosts) => [
+            {
+              id: newTransaction.id,
+              restaurant: newTransaction.restaurant,
+              amount: newTransaction.amount,
+              userID: newTransaction.userID,
+              timestamp: new Date(newTransaction.created_at).toLocaleString(),
+              likes: newTransaction.likes ?? 0,
+              comments: newTransaction.comments ?? 0,
+              isLiked: false,
+            },
+            ...currentPosts,
+          ]);
         }
       )
       .subscribe();
@@ -108,9 +114,12 @@ export default function SocialScreen() {
   }, []);
 
   const getCurrentUser = async () => {
-    const { data: { user }, error } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
     if (error) {
-      console.error('Error getting user:', error.message);
+      console.error("Error getting user:", error.message);
       return;
     }
     if (user) {
@@ -120,57 +129,61 @@ export default function SocialScreen() {
 
   const handleLike = async (postId: number) => {
     try {
-      const post = posts.find(p => p.id === postId);
+      const post = posts.find((p) => p.id === postId);
       if (!post) return;
 
-      const { error } = await supabase  
-        .from('transactions')
+      const { error } = await supabase
+        .from("transactions")
         .update({ likes: post.isLiked ? post.likes - 1 : post.likes + 1 })
-        .eq('id', postId);
-        
+        .eq("id", postId);
+
       if (error) {
-        console.error('Error updating likes:', error);
+        console.error("Error updating likes:", error);
         return;
       }
-      
-      setPosts(posts.map(p => 
-        p.id === postId 
-          ? { ...p, likes: p.isLiked ? p.likes - 1 : p.likes + 1, isLiked: !p.isLiked }
-          : p
-      ));
+
+      setPosts(
+        posts.map((p) =>
+          p.id === postId
+            ? {
+                ...p,
+                likes: p.isLiked ? p.likes - 1 : p.likes + 1,
+                isLiked: !p.isLiked,
+              }
+            : p
+        )
+      );
     } catch (err) {
-      console.error('Error in handleLike:', err);
+      console.error("Error in handleLike:", err);
     }
   };
 
   const handlePost = async () => {
     if (!userId) {
-      console.error('User not authenticated');
+      console.error("User not authenticated");
       return;
     }
 
-    const { error } = await supabase
-      .from('transactions')
-      .insert([
-        {
-          userID: userId,
-          restaurant: newRestaurant,
-          amount: parseFloat(newAmount),
-          created_at: new Date().toISOString(),
-          likes: 0,
-          comments: 0,
-          is_liked: false
-        },
-      ]);
+    const { error } = await supabase.from("transactions").insert([
+      {
+        userID: userId,
+        restaurant: newRestaurant,
+        amount: parseFloat(newAmount),
+        created_at: new Date().toISOString(),
+        likes: 0,
+        comments: 0,
+        is_liked: false,
+      },
+    ]);
 
     if (error) {
-      console.error('Error creating post:', error.message);
+      console.error("Error creating post:", error.message);
       return;
     }
 
     // Clear input fields after successful post
-    setNewRestaurant('');
-    setNewAmount('');
+    setNewRestaurant("");
+    setNewAmount("");
   };
 
   const renderPost = ({ item }: { item: Post }) => (
@@ -185,7 +198,7 @@ export default function SocialScreen() {
       isLiked={item.isLiked}
       onLike={handleLike}
       onComment={(id) => {
-        console.log('Comment pressed for post:', id);
+        console.log("Comment pressed for post:", id);
       }}
     />
   );
@@ -218,9 +231,12 @@ export default function SocialScreen() {
             keyboardType="decimal-pad"
           />
           <TouchableOpacity
-            style={[styles.postButton, { 
-              opacity: (newRestaurant.trim() && newAmount.trim()) ? 1 : 0.5 
-            }]}
+            style={[
+              styles.postButton,
+              {
+                opacity: newRestaurant.trim() && newAmount.trim() ? 1 : 0.5,
+              },
+            ]}
             onPress={handlePost}
             disabled={!newRestaurant.trim() || !newAmount.trim()}
           >
@@ -238,18 +254,18 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
   },
   inputContainer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'white',
+    backgroundColor: "white",
   },
   newPostContainer: {
     padding: 15,
     backgroundColor: "white",
     borderTopWidth: 1,
     borderTopColor: "#eee",
-    marginBottom: Platform.OS === 'ios' ? 90 : 60,
+    marginBottom: Platform.OS === "ios" ? 90 : 60,
   },
   input: {
     height: 40,
