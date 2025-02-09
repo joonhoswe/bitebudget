@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Transaction from '../components/transaction';
 import { supabase } from "@/utils/supabase";
+import Friends from "@/components/Friends";
 
 type Post = {
   id: number;
@@ -31,6 +32,7 @@ export default function SocialScreen() {
   const [newRestaurant, setNewRestaurant] = useState("");
   const [newAmount, setNewAmount] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"feed" | "friends">("feed");
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -192,13 +194,37 @@ export default function SocialScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <FlatList
-        data={posts}
-        renderItem={renderPost}
-        keyExtractor={(item) => item.id.toString()}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 180 }}
-      />
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "feed" && styles.activeTab]}
+          onPress={() => setActiveTab("feed")}
+        >
+          <Text style={[styles.tabText, activeTab === "feed" && styles.activeTabText]}>
+            Feed
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "friends" && styles.activeTab]}
+          onPress={() => setActiveTab("friends")}
+        >
+          <Text style={[styles.tabText, activeTab === "friends" && styles.activeTabText]}>
+            Friends
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {activeTab === "feed" ? (
+        <FlatList
+          data={posts}
+          renderItem={renderPost}
+          keyExtractor={(item) => item.id.toString()}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 180 }}
+        />
+      ) : (
+        <Friends />
+      )}
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.inputContainer}
@@ -311,5 +337,29 @@ const styles = StyleSheet.create({
   actionText: {
     marginLeft: 5,
     color: "#666",
+  },
+  tabContainer: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    backgroundColor: "white",
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 15,
+    alignItems: "center",
+  },
+  activeTab: {
+    borderBottomWidth: 2,
+    borderBottomColor: "#4CD964",
+  },
+  tabText: {
+    color: "#666666",
+    fontSize: 16,
+    fontFamily: "InriaSans-Regular",
+  },
+  activeTabText: {
+    color: "#4CD964",
+    fontFamily: "InriaSans-Bold",
   },
 });
