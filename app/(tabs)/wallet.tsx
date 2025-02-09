@@ -2,7 +2,7 @@ import 'react-native-get-random-values';
 import { Stack } from 'expo-router';
 import { Connection, PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
 import { useCallback, useState } from 'react';
-import { Text, TouchableOpacity, View, Alert, Platform, Linking } from 'react-native';
+import { Text, TouchableOpacity, View, Alert, Platform, Linking, StyleSheet } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 
 const SOLANA_NETWORK = 'devnet';
@@ -104,60 +104,68 @@ export default function WalletScreen() {
     }
   }, [publicKey]);
 
+  const openPhantomApp = useCallback(() => {
+    if (Platform.OS === 'ios') {
+      Linking.openURL('phantom://');
+    } else {
+      connectWallet();
+    }
+  }, []);
+
+  const downloadPhantom = useCallback(() => {
+    if (Platform.OS === 'ios') {
+      Linking.openURL('https://apps.apple.com/us/app/phantom-solana-wallet/id1598432977');
+    } else {
+      Linking.openURL('https://play.google.com/store/apps/details?id=app.phantom');
+    }
+  }, []);
+
   return (
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+    <View style={styles.container}>
       <Stack.Screen
         options={{
-          headerTitle: 'Wallet',
-          headerStyle: {
-            backgroundColor: '#FFFFFF',
-          },
-          headerTintColor: '#4CD964',
-          headerTitleStyle: {
-            fontFamily: 'InriaSans-Bold',
-          },
+          headerShown: false,
         }}
       />
 
-      <View style={{ 
-        flex: 1, 
-        padding: 20,
-        justifyContent: 'center'
-      }}>
-        {!connected ? (
+      <View style={styles.content}>
+        <Text style={styles.title}>Blockchain</Text>
+        
+        <Text style={styles.description}>
+          Learn financial responsibility for the future. Using Solana (SOL) and Phantom Wallet, you can experience Web3 transactions.
+        </Text>
+
+        <View style={styles.walletSection}>
+          <Text style={styles.connectTitle}>Connect a wallet</Text>
+
           <TouchableOpacity
-            onPress={connectWallet}
-            style={{
-              backgroundColor: '#4CD964',
-              padding: 16,
-              borderRadius: 12,
-              alignItems: 'center',
-              width: '100%',
-            }}
+            onPress={openPhantomApp}
+            style={styles.phantomButton}
           >
-            <Text style={{ color: 'white', fontFamily: 'InriaSans-Bold' }}>
-              Connect Wallet
-            </Text>
+            <Text style={styles.buttonText}>Log Into Phantom</Text>
           </TouchableOpacity>
-        ) : (
-          <View style={{ width: '100%' }}>
-            <Text style={{ fontFamily: 'InriaSans-Regular', marginBottom: 10 }}>
+
+          <Text style={styles.orText}>Or</Text>
+
+          <TouchableOpacity
+            onPress={downloadPhantom}
+            style={styles.phantomButton}
+          >
+            <Text style={styles.buttonText}>Download Phantom</Text>
+          </TouchableOpacity>
+        </View>
+
+        {connected && (
+          <View style={styles.connectedSection}>
+            <Text style={styles.connectedText}>
               Connected: {publicKey?.slice(0, 4)}...{publicKey?.slice(-4)}
             </Text>
             
             <TouchableOpacity
               onPress={sendTransaction}
-              style={{
-                backgroundColor: '#4CD964',
-                padding: 16,
-                borderRadius: 12,
-                alignItems: 'center',
-                marginTop: 20,
-              }}
+              style={styles.sendButton}
             >
-              <Text style={{ color: 'white', fontFamily: 'InriaSans-Bold' }}>
-                Send Transaction
-              </Text>
+              <Text style={styles.buttonText}>Send Transaction</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -167,21 +175,94 @@ export default function WalletScreen() {
                   Alert.alert('Copied', 'Address copied to clipboard');
                 }
               }}
-              style={{
-                backgroundColor: '#F0F0F0',
-                padding: 16,
-                borderRadius: 12,
-                alignItems: 'center',
-                marginTop: 10,
-              }}
+              style={styles.copyButton}
             >
-              <Text style={{ color: '#666666', fontFamily: 'InriaSans-Regular' }}>
-                Copy Address
-              </Text>
+              <Text style={styles.copyButtonText}>Copy Address</Text>
             </TouchableOpacity>
           </View>
         )}
       </View>
     </View>
   );
-} 
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  content: {
+    flex: 1,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: {
+    fontSize: 28,
+    fontFamily: 'InriaSans-Bold',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  description: {
+    fontSize: 16,
+    fontFamily: 'InriaSans-Regular',
+    textAlign: 'center',
+    marginBottom: 40,
+    paddingHorizontal: 20,
+    color: '#666666',
+  },
+  walletSection: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  connectTitle: {
+    fontSize: 24,
+    fontFamily: 'InriaSans-Bold',
+    marginBottom: 20,
+  },
+  phantomButton: {
+    backgroundColor: '#4CD964',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 10,
+  },
+  buttonText: {
+    color: 'white',
+    fontFamily: 'InriaSans-Bold',
+    fontSize: 16,
+  },
+  orText: {
+    fontFamily: 'InriaSans-Regular',
+    fontSize: 16,
+    marginVertical: 10,
+    color: '#666666',
+  },
+  connectedSection: {
+    width: '100%',
+    marginTop: 20,
+  },
+  connectedText: {
+    fontFamily: 'InriaSans-Regular',
+    marginBottom: 10,
+  },
+  sendButton: {
+    backgroundColor: '#4CD964',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  copyButton: {
+    backgroundColor: '#F0F0F0',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  copyButtonText: {
+    color: '#666666',
+    fontFamily: 'InriaSans-Regular',
+  },
+}); 
