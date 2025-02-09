@@ -35,7 +35,7 @@
     "expo-font": "~13.0.3",
     "expo-haptics": "~14.0.1",
     "expo-image": "^2.0.4",
-    "expo-image-picker": "^16.0.5",
+    "expo-image-picker": "~16.0.5",
     "expo-linking": "~7.0.5",
     "expo-media-library": "~17.0.5",
     "expo-router": "~4.0.17",
@@ -56,8 +56,7 @@
     "react-native-url-polyfill": "^2.0.0",
     "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.5",
-    "vector-icons": "^0.1.0",
-    "expo-image-picker": "~16.0.5"
+    "vector-icons": "^0.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
