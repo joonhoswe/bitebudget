@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.bitebudget.app",
+      "bundleIdentifier": "com.yourcompany.bitebudget",
       "associatedDomains": [
         "applinks:bitebudget.app"
       ]
@@ -20,7 +20,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.bitebudget.app",
+      "package": "com.yourcompany.bitebudget",
       "intentFilters": [
         {
           "action": "VIEW",

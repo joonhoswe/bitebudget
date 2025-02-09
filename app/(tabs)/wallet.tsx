@@ -175,13 +175,21 @@ export default function WalletScreen() {
 
     // Check if this is a return from Phantom
     if (path?.includes('phantom-login')) {
-      // Extract data from URL parameters with type assertion
-      const params = queryParams as { public_key?: string; signature?: string };
+      // Extract data from URL parameters
+      const params = queryParams as { 
+        public_key?: string; 
+        signature?: string;
+        session?: string;
+      };
       
       if (params.public_key) {
         setPublicKey(params.public_key);
         setConnected(true);
+        // Fetch user's NFTs after successful connection
         fetchUserNFTs();
+        
+        // Show success message
+        Alert.alert('Success', 'Wallet connected successfully!');
       }
     }
   }, [fetchUserNFTs]);
@@ -193,10 +201,10 @@ export default function WalletScreen() {
         // Create deep link URL for your app
         const redirectUrl = Linking.createURL('phantom-login');
         
-        // Use the correct Phantom deep link format
-        const phantomUrl = `https://phantom.app/ul/v1/connect?app_url=${encodeURIComponent(redirectUrl)}`;
+        // Create the Phantom URL with required parameters
+        const phantomUrl = `https://phantom.app/ul/v1/connect?app_url=${encodeURIComponent(redirectUrl)}&dapp_encryption_public_key=your_encryption_key`;
         
-        const canOpenPhantom = await Linking.canOpenURL('https://phantom.app');
+        const canOpenPhantom = await Linking.canOpenURL('phantom://');
         if (canOpenPhantom) {
           await Linking.openURL(phantomUrl);
         } else {
@@ -270,41 +278,65 @@ export default function WalletScreen() {
     }
 
     try {
-      const { transact } = require('@solana-mobile/mobile-wallet-adapter-protocol-web3js');
-      await transact(async (wallet: any) => {
-        const response = await fetch(
-          `${MAGIC_EDEN_API_BASE}/tokens/${nft.mintAddress}/listings`
-        );
-        const listings = await response.json();
-        if (!listings.length) {
-          throw new Error('NFT listing not found');
-        }
+      if (Platform.OS === 'ios') {
+        // For iOS, create a deep link to Phantom for the purchase
+        const redirectUrl = Linking.createURL('phantom-purchase');
+        
+        // Create transaction data
+        const transactionData = {
+          to: nft.mintAddress,
+          amount: nft.price,
+          splToken: 'SOL',
+          reference: `purchase_${nft.mintAddress}`,
+        };
 
-        const purchaseResponse = await fetch(
-          `${MAGIC_EDEN_API_BASE}/instructions/buy`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              buyerAddress: publicKey,
-              sellerAddress: listings[0].seller,
-              auctionHouseAddress: listings[0].auctionHouse,
-              tokenMint: nft.mintAddress,
-              price: nft.price,
-            }),
+        // Create Phantom payment URL
+        const phantomUrl = `https://phantom.app/ul/v1/transfer?` +
+          `app_url=${encodeURIComponent(redirectUrl)}` +
+          `&recipient=${encodeURIComponent(transactionData.to)}` +
+          `&amount=${transactionData.amount}` +
+          `&splToken=${transactionData.splToken}` +
+          `&reference=${transactionData.reference}`;
+
+        await Linking.openURL(phantomUrl);
+      } else {
+        // Existing Android implementation
+        const { transact } = require('@solana-mobile/mobile-wallet-adapter-protocol-web3js');
+        await transact(async (wallet: any) => {
+          const response = await fetch(
+            `${MAGIC_EDEN_API_BASE}/tokens/${nft.mintAddress}/listings`
+          );
+          const listings = await response.json();
+          if (!listings.length) {
+            throw new Error('NFT listing not found');
           }
-        );
 
-        const { txData } = await purchaseResponse.json();
-        const signatures = await wallet.signAndSendTransactions({
-          payloads: [txData]
+          const purchaseResponse = await fetch(
+            `${MAGIC_EDEN_API_BASE}/instructions/buy`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                buyerAddress: publicKey,
+                sellerAddress: listings[0].seller,
+                auctionHouseAddress: listings[0].auctionHouse,
+                tokenMint: nft.mintAddress,
+                price: nft.price,
+              }),
+            }
+          );
+
+          const { txData } = await purchaseResponse.json();
+          const signatures = await wallet.signAndSendTransactions({
+            payloads: [txData]
+          });
+
+          if (signatures?.length > 0) {
+            Alert.alert('Success', 'NFT purchased successfully!');
+            fetchUserNFTs();
+          }
         });
-
-        if (signatures?.length > 0) {
-          Alert.alert('Success', 'NFT purchased successfully!');
-          fetchUserNFTs();
-        }
-      });
+      }
     } catch (error) {
       console.error('Error purchasing NFT:', error);
       Alert.alert('Error', 'Failed to purchase NFT');
