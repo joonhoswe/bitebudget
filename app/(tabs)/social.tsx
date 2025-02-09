@@ -7,18 +7,18 @@ import {
   FlatList,
   TextInput,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Transaction from '../components/transaction';
+import Transaction from "../components/transaction";
 import { supabase } from "@/utils/supabase";
+import Friends from "../../components/Friends";
 
 type Post = {
   id: number;
   restaurant: string;
   amount: number;
   userID: string;
+  userEmail: string;
   timestamp: string;
   likes: number;
   comments: number;
@@ -30,14 +30,15 @@ export default function SocialScreen() {
   const [newPost, setNewPost] = useState("");
   const [newRestaurant, setNewRestaurant] = useState("");
   const [newAmount, setNewAmount] = useState("");
-  const [userId, setUserId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"feed" | "friends">("feed");
 
   useEffect(() => {
     const fetchPosts = async () => {
       try {
         const { data, error } = await supabase
-          .from('transactions')
-          .select(`
+          .from("transactions")
+          .select(
+            `
             id,
             restaurant,
             amount,
@@ -45,12 +46,13 @@ export default function SocialScreen() {
             created_at,
             likes,
             comments
-          `)
-          .order('created_at', { ascending: false })
+          `
+          )
+          .order("created_at", { ascending: false })
           .limit(50);
 
         if (error) {
-          console.error('Error fetching posts:', error);
+          console.error("Error fetching posts:", error);
           return;
         }
 
@@ -59,41 +61,62 @@ export default function SocialScreen() {
           return;
         }
 
-        const formattedPosts: Post[] = data.map(post => ({
-          id: post.id,
-          restaurant: post.restaurant,
-          amount: post.amount,
-          userID: post.userID,
-          timestamp: new Date(post.created_at).toLocaleString(),
-          likes: post.likes ?? 0,
-          comments: post.comments ?? 0,
-          isLiked: false
-        }));
+        const postsWithEmails = await Promise.all(
+          data.map(async (post) => {
+            const { data: emailData } = await supabase.rpc(
+              "get_email_from_auth_users",
+              { user_id: post.userID }
+            );
 
-        setPosts(formattedPosts);
+            return {
+              id: post.id,
+              restaurant: post.restaurant,
+              amount: post.amount,
+              userID: post.userID,
+              userEmail: emailData?.[0]?.email || "Unknown User",
+              timestamp: new Date(post.created_at).toLocaleString(),
+              likes: post.likes ?? 0,
+              comments: post.comments ?? 0,
+              isLiked: false,
+            };
+          })
+        );
+
+        setPosts(postsWithEmails);
       } catch (error) {
-        console.error('Error:', error);
+        console.error("Error:", error);
       }
     };
 
     fetchPosts();
 
     const subscription = supabase
-      .channel('transactions_channel')
-      .on('postgres_changes', 
-        { event: 'INSERT', schema: 'public', table: 'transactions' },
-        (payload) => {
+      .channel("transactions_channel")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "transactions" },
+        async (payload) => {
           const newTransaction = payload.new;
-          setPosts(currentPosts => [{
-            id: newTransaction.id,
-            restaurant: newTransaction.restaurant,
-            amount: newTransaction.amount,
-            userID: newTransaction.userID,
-            timestamp: new Date(newTransaction.created_at).toLocaleString(),
-            likes: newTransaction.likes ?? 0,
-            comments: newTransaction.comments ?? 0,
-            isLiked: false
-          }, ...currentPosts]);
+
+          const { data: emailData } = await supabase.rpc(
+            "get_email_from_auth_users",
+            { user_id: newTransaction.userID }
+          );
+
+          setPosts((currentPosts) => [
+            {
+              id: newTransaction.id,
+              restaurant: newTransaction.restaurant,
+              amount: newTransaction.amount,
+              userID: newTransaction.userID,
+              userEmail: emailData?.[0]?.email || "Unknown User",
+              timestamp: new Date(newTransaction.created_at).toLocaleString(),
+              likes: newTransaction.likes ?? 0,
+              comments: newTransaction.comments ?? 0,
+              isLiked: false,
+            },
+            ...currentPosts,
+          ]);
         }
       )
       .subscribe();
@@ -103,74 +126,45 @@ export default function SocialScreen() {
     };
   }, []);
 
-  useEffect(() => {
-    getCurrentUser();
-  }, []);
-
-  const getCurrentUser = async () => {
-    const { data: { user }, error } = await supabase.auth.getUser();
-    if (error) {
-      console.error('Error getting user:', error.message);
-      return;
-    }
-    if (user) {
-      setUserId(user.id);
-    }
-  };
-
-  const handleLike = async (postId: number) => {
-    try {
-      const post = posts.find(p => p.id === postId);
-      if (!post) return;
-
-      const { error } = await supabase  
-        .from('transactions')
-        .update({ likes: post.isLiked ? post.likes - 1 : post.likes + 1 })
-        .eq('id', postId);
-        
-      if (error) {
-        console.error('Error updating likes:', error);
-        return;
-      }
-      
-      setPosts(posts.map(p => 
-        p.id === postId 
-          ? { ...p, likes: p.isLiked ? p.likes - 1 : p.likes + 1, isLiked: !p.isLiked }
-          : p
-      ));
-    } catch (err) {
-      console.error('Error in handleLike:', err);
-    }
+  const handleLike = (postId: number) => {
+    setPosts(
+      posts.map((post) => {
+        if (post.id === postId) {
+          return {
+            ...post,
+            likes: post.isLiked ? post.likes - 1 : post.likes + 1,
+            isLiked: !post.isLiked,
+          };
+        }
+        return post;
+      })
+    );
   };
 
   const handlePost = async () => {
-    if (!userId) {
-      console.error('User not authenticated');
-      return;
-    }
+    if (!newRestaurant.trim() || !newAmount.trim()) return;
 
-    const { error } = await supabase
-      .from('transactions')
-      .insert([
-        {
-          userID: userId,
+    try {
+      const { data, error } = await supabase
+        .from("transactions")
+        .insert({
           restaurant: newRestaurant,
           amount: parseFloat(newAmount),
+          userID: "currentUser", // You'll want to replace this with actual user ID
           created_at: new Date().toISOString(),
-          likes: 0,
-          comments: 0,
-          is_liked: false
-        },
-      ]);
+        })
+        .select()
+        .single();
 
-    if (error) {
-      console.error('Error creating post:', error.message);
-      return;
+      if (error) throw error;
+
+      // Clear inputs
+      setNewRestaurant("");
+      setNewAmount("");
+      setNewPost("");
+    } catch (error) {
+      console.error("Error creating post:", error);
     }
-
-    // Clear input fields after successful post
-    setNewRestaurant('');
-    setNewAmount('');
   };
 
   const renderPost = ({ item }: { item: Post }) => (
@@ -178,32 +172,58 @@ export default function SocialScreen() {
       id={item.id}
       restaurant={item.restaurant}
       amount={item.amount}
-      userID={item.userID}
+      userID={item.userEmail}
       timestamp={item.timestamp}
       likes={item.likes}
       comments={item.comments}
       isLiked={item.isLiked}
       onLike={handleLike}
       onComment={(id) => {
-        console.log('Comment pressed for post:', id);
+        console.log("Comment pressed for post:", id);
       }}
     />
   );
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <FlatList
-        data={posts}
-        renderItem={renderPost}
-        keyExtractor={(item) => item.id.toString()}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 180 }}
-      />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.inputContainer}
-      >
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "feed" && styles.activeTab]}
+          onPress={() => setActiveTab("feed")}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "feed" && styles.activeTabText,
+            ]}
+          >
+            Feed
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "friends" && styles.activeTab]}
+          onPress={() => setActiveTab("friends")}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "friends" && styles.activeTabText,
+            ]}
+          >
+            Friends
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {activeTab === "feed" ? (
         <View style={styles.newPostContainer}>
+          <FlatList
+            data={posts}
+            renderItem={renderPost}
+            keyExtractor={(item) => item.id.toString()}
+            showsVerticalScrollIndicator={false}
+          />
+
           <TextInput
             style={styles.input}
             value={newRestaurant}
@@ -218,16 +238,21 @@ export default function SocialScreen() {
             keyboardType="decimal-pad"
           />
           <TouchableOpacity
-            style={[styles.postButton, { 
-              opacity: (newRestaurant.trim() && newAmount.trim()) ? 1 : 0.5 
-            }]}
+            style={[
+              styles.postButton,
+              {
+                opacity: newRestaurant.trim() && newAmount.trim() ? 1 : 0.5,
+              },
+            ]}
             onPress={handlePost}
             disabled={!newRestaurant.trim() || !newAmount.trim()}
           >
             <Text style={styles.postButtonText}>Post</Text>
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      ) : (
+        <Friends />
+      )}
     </SafeAreaView>
   );
 }
@@ -235,24 +260,16 @@ export default function SocialScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
-  },
-  inputContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'white',
+    backgroundColor: "white",
   },
   newPostContainer: {
     padding: 15,
     backgroundColor: "white",
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
-    marginBottom: Platform.OS === 'ios' ? 90 : 60,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
   },
   input: {
-    height: 40,
+    height: 100,
     padding: 10,
     backgroundColor: "#f9f9f9",
     borderRadius: 10,
@@ -311,5 +328,29 @@ const styles = StyleSheet.create({
   actionText: {
     marginLeft: 5,
     color: "#666",
+  },
+  tabContainer: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    backgroundColor: "white",
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 15,
+    alignItems: "center",
+  },
+  activeTab: {
+    borderBottomWidth: 2,
+    borderBottomColor: "#4CD964",
+  },
+  tabText: {
+    color: "#666666",
+    fontSize: 16,
+    fontFamily: "InriaSans-Regular",
+  },
+  activeTabText: {
+    color: "#4CD964",
+    fontFamily: "InriaSans-Bold",
   },
 });

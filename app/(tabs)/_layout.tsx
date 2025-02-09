@@ -1,6 +1,6 @@
 import { Tabs, router } from "expo-router";
 import React, { useState, useRef } from "react";
-import { Platform, Text, StyleSheet, Animated, TouchableOpacity, View, Image, Linking, Alert } from "react-native";
+import { Platform, Text, StyleSheet, Animated, TouchableOpacity, View, Image, Linking, Alert, StatusBar } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Camera } from 'expo-camera';
 
@@ -62,7 +62,8 @@ export default function TabLayout(): JSX.Element {
   };
 
   return (
-    <View style={{ flex: 1 }}>
+    <View>
+      <StatusBar barStyle="dark-content" />
       <Tabs
         screenOptions={{
           tabBarActiveTintColor: "#4CD964",
