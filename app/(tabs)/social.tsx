@@ -18,6 +18,7 @@ type Post = {
   restaurant: string;
   amount: number;
   userID: string;
+  userEmail: string;
   timestamp: string;
   likes: number;
   comments: number;
@@ -60,18 +61,28 @@ export default function SocialScreen() {
           return;
         }
 
-        const formattedPosts: Post[] = data.map((post) => ({
-          id: post.id,
-          restaurant: post.restaurant,
-          amount: post.amount,
-          userID: post.userID,
-          timestamp: new Date(post.created_at).toLocaleString(),
-          likes: post.likes ?? 0,
-          comments: post.comments ?? 0,
-          isLiked: false,
-        }));
+        const postsWithEmails = await Promise.all(
+          data.map(async (post) => {
+            const { data: emailData } = await supabase.rpc(
+              "get_email_from_auth_users",
+              { user_id: post.userID }
+            );
 
-        setPosts(formattedPosts);
+            return {
+              id: post.id,
+              restaurant: post.restaurant,
+              amount: post.amount,
+              userID: post.userID,
+              userEmail: emailData?.[0]?.email || "Unknown User",
+              timestamp: new Date(post.created_at).toLocaleString(),
+              likes: post.likes ?? 0,
+              comments: post.comments ?? 0,
+              isLiked: false,
+            };
+          })
+        );
+
+        setPosts(postsWithEmails);
       } catch (error) {
         console.error("Error:", error);
       }
@@ -84,14 +95,21 @@ export default function SocialScreen() {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "transactions" },
-        (payload) => {
+        async (payload) => {
           const newTransaction = payload.new;
+
+          const { data: emailData } = await supabase.rpc(
+            "get_email_from_auth_users",
+            { user_id: newTransaction.userID }
+          );
+
           setPosts((currentPosts) => [
             {
               id: newTransaction.id,
               restaurant: newTransaction.restaurant,
               amount: newTransaction.amount,
               userID: newTransaction.userID,
+              userEmail: emailData?.[0]?.email || "Unknown User",
               timestamp: new Date(newTransaction.created_at).toLocaleString(),
               likes: newTransaction.likes ?? 0,
               comments: newTransaction.comments ?? 0,
@@ -154,7 +172,7 @@ export default function SocialScreen() {
       id={item.id}
       restaurant={item.restaurant}
       amount={item.amount}
-      userID={item.userID}
+      userID={item.userEmail}
       timestamp={item.timestamp}
       likes={item.likes}
       comments={item.comments}
@@ -242,7 +260,7 @@ export default function SocialScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: "white",
   },
   newPostContainer: {
     padding: 15,
