@@ -238,7 +238,7 @@ async function sendImageToBackend(uri: string) {
       {
         userID: user.id,
         restaurant: data.raw_text.substring(26, 33),
-        amount: data.total_spent,
+        amount: data.total_spent.substring(8,11),
         created_at: new Date().toISOString(),
         likes: 0,
         comments: 0,
