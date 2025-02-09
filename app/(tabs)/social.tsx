@@ -20,6 +20,7 @@ type Post = {
   restaurant: string;
   amount: number;
   userID: string;
+  userEmail: string;
   timestamp: string;
   likes: number;
   comments: number;
@@ -63,18 +64,40 @@ export default function SocialScreen() {
           return;
         }
 
-        const formattedPosts: Post[] = data.map((post) => ({
-          id: post.id,
-          restaurant: post.restaurant,
-          amount: post.amount,
-          userID: post.userID,
-          timestamp: new Date(post.created_at).toLocaleString(),
-          likes: post.likes ?? 0,
-          comments: post.comments ?? 0,
-          isLiked: false,
-        }));
+        const postsWithEmails = await Promise.all(
+          data.map(async (post) => {
+            try {
+              const { data: emailData } = await supabase.rpc('get_email_from_auth_users', {
+                user_id: post.userID
+              });
+              const userEmail = emailData?.[0]?.email || 'Unknown User';
 
-        setPosts(formattedPosts);
+              return {
+                id: post.id,
+                restaurant: post.restaurant,
+                amount: post.amount,
+                userID: post.userID,
+                userEmail: userEmail,
+                timestamp: new Date(post.created_at).toLocaleString(),
+                likes: post.likes ?? 0,
+                comments: post.comments ?? 0,
+                isLiked: false,
+              };
+            } catch (err) {
+              console.error('Error fetching email:', err);
+              return {
+                ...post,
+                userEmail: 'Unknown User',
+                timestamp: new Date(post.created_at).toLocaleString(),
+                likes: post.likes ?? 0,
+                comments: post.comments ?? 0,
+                isLiked: false,
+              };
+            }
+          })
+        );
+
+        setPosts(postsWithEmails);
       } catch (error) {
         console.error("Error:", error);
       }
@@ -87,21 +110,31 @@ export default function SocialScreen() {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "transactions" },
-        (payload) => {
+        async (payload) => {
           const newTransaction = payload.new;
-          setPosts((currentPosts) => [
-            {
-              id: newTransaction.id,
-              restaurant: newTransaction.restaurant,
-              amount: newTransaction.amount,
-              userID: newTransaction.userID,
-              timestamp: new Date(newTransaction.created_at).toLocaleString(),
-              likes: newTransaction.likes ?? 0,
-              comments: newTransaction.comments ?? 0,
-              isLiked: false,
-            },
-            ...currentPosts,
-          ]);
+          try {
+            const { data: emailData } = await supabase.rpc('get_email_from_auth_users', {
+              user_id: newTransaction.userID
+            });
+            const userEmail = emailData?.[0]?.email || 'Unknown User';
+
+            setPosts((currentPosts) => [
+              {
+                id: newTransaction.id,
+                restaurant: newTransaction.restaurant,
+                amount: newTransaction.amount,
+                userID: newTransaction.userID,
+                userEmail: userEmail,
+                timestamp: new Date(newTransaction.created_at).toLocaleString(),
+                likes: newTransaction.likes ?? 0,
+                comments: newTransaction.comments ?? 0,
+                isLiked: false,
+              },
+              ...currentPosts,
+            ]);
+          } catch (err) {
+            console.error('Error fetching email for new transaction:', err);
+          }
         }
       )
       .subscribe();
@@ -193,7 +226,7 @@ export default function SocialScreen() {
       id={item.id}
       restaurant={item.restaurant}
       amount={item.amount}
-      userID={item.userID}
+      userID={item.userEmail}
       timestamp={item.timestamp}
       likes={item.likes}
       comments={item.comments}
