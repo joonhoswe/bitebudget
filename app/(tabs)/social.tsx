@@ -9,9 +9,9 @@ import {
   StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Transaction from '../components/transaction';
+import Transaction from "../components/transaction";
 import { supabase } from "@/utils/supabase";
-import Friends from '../../components/Friends';
+import Friends from "../../components/Friends";
 
 type Post = {
   id: number;
@@ -29,14 +29,15 @@ export default function SocialScreen() {
   const [newPost, setNewPost] = useState("");
   const [newRestaurant, setNewRestaurant] = useState("");
   const [newAmount, setNewAmount] = useState("");
-  const [activeTab, setActiveTab] = useState<'feed' | 'friends'>('feed');
+  const [activeTab, setActiveTab] = useState<"feed" | "friends">("feed");
 
   useEffect(() => {
     const fetchPosts = async () => {
       try {
         const { data, error } = await supabase
-          .from('transactions')
-          .select(`
+          .from("transactions")
+          .select(
+            `
             id,
             restaurant,
             amount,
@@ -44,12 +45,13 @@ export default function SocialScreen() {
             created_at,
             likes,
             comments
-          `)
-          .order('created_at', { ascending: false })
+          `
+          )
+          .order("created_at", { ascending: false })
           .limit(50);
 
         if (error) {
-          console.error('Error fetching posts:', error);
+          console.error("Error fetching posts:", error);
           return;
         }
 
@@ -58,7 +60,7 @@ export default function SocialScreen() {
           return;
         }
 
-        const formattedPosts: Post[] = data.map(post => ({
+        const formattedPosts: Post[] = data.map((post) => ({
           id: post.id,
           restaurant: post.restaurant,
           amount: post.amount,
@@ -66,33 +68,37 @@ export default function SocialScreen() {
           timestamp: new Date(post.created_at).toLocaleString(),
           likes: post.likes ?? 0,
           comments: post.comments ?? 0,
-          isLiked: false
+          isLiked: false,
         }));
 
         setPosts(formattedPosts);
       } catch (error) {
-        console.error('Error:', error);
+        console.error("Error:", error);
       }
     };
 
     fetchPosts();
 
     const subscription = supabase
-      .channel('transactions_channel')
-      .on('postgres_changes', 
-        { event: 'INSERT', schema: 'public', table: 'transactions' },
+      .channel("transactions_channel")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "transactions" },
         (payload) => {
           const newTransaction = payload.new;
-          setPosts(currentPosts => [{
-            id: newTransaction.id,
-            restaurant: newTransaction.restaurant,
-            amount: newTransaction.amount,
-            userID: newTransaction.userID,
-            timestamp: new Date(newTransaction.created_at).toLocaleString(),
-            likes: newTransaction.likes ?? 0,
-            comments: newTransaction.comments ?? 0,
-            isLiked: false
-          }, ...currentPosts]);
+          setPosts((currentPosts) => [
+            {
+              id: newTransaction.id,
+              restaurant: newTransaction.restaurant,
+              amount: newTransaction.amount,
+              userID: newTransaction.userID,
+              timestamp: new Date(newTransaction.created_at).toLocaleString(),
+              likes: newTransaction.likes ?? 0,
+              comments: newTransaction.comments ?? 0,
+              isLiked: false,
+            },
+            ...currentPosts,
+          ]);
         }
       )
       .subscribe();
@@ -122,12 +128,12 @@ export default function SocialScreen() {
 
     try {
       const { data, error } = await supabase
-        .from('transactions')
+        .from("transactions")
         .insert({
           restaurant: newRestaurant,
           amount: parseFloat(newAmount),
-          userID: "currentUser",  // You'll want to replace this with actual user ID
-          created_at: new Date().toISOString()
+          userID: "currentUser", // You'll want to replace this with actual user ID
+          created_at: new Date().toISOString(),
         })
         .select()
         .single();
@@ -139,7 +145,7 @@ export default function SocialScreen() {
       setNewAmount("");
       setNewPost("");
     } catch (error) {
-      console.error('Error creating post:', error);
+      console.error("Error creating post:", error);
     }
   };
 
@@ -155,7 +161,7 @@ export default function SocialScreen() {
       isLiked={item.isLiked}
       onLike={handleLike}
       onComment={(id) => {
-        console.log('Comment pressed for post:', id);
+        console.log("Comment pressed for post:", id);
       }}
     />
   );
@@ -164,32 +170,34 @@ export default function SocialScreen() {
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.tabContainer}>
         <TouchableOpacity
-          style={[
-            styles.tab,
-            activeTab === 'feed' && styles.activeTab
-          ]}
-          onPress={() => setActiveTab('feed')}
+          style={[styles.tab, activeTab === "feed" && styles.activeTab]}
+          onPress={() => setActiveTab("feed")}
         >
-          <Text style={[
-            styles.tabText,
-            activeTab === 'feed' && styles.activeTabText
-          ]}>Feed</Text>
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "feed" && styles.activeTabText,
+            ]}
+          >
+            Feed
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[
-            styles.tab,
-            activeTab === 'friends' && styles.activeTab
-          ]}
-          onPress={() => setActiveTab('friends')}
+          style={[styles.tab, activeTab === "friends" && styles.activeTab]}
+          onPress={() => setActiveTab("friends")}
         >
-          <Text style={[
-            styles.tabText,
-            activeTab === 'friends' && styles.activeTabText
-          ]}>Friends</Text>
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "friends" && styles.activeTabText,
+            ]}
+          >
+            Friends
+          </Text>
         </TouchableOpacity>
       </View>
 
-      {activeTab === 'feed' ? (
+      {activeTab === "feed" ? (
         <View style={styles.newPostContainer}>
           <FlatList
             data={posts}
@@ -212,9 +220,12 @@ export default function SocialScreen() {
             keyboardType="decimal-pad"
           />
           <TouchableOpacity
-            style={[styles.postButton, { 
-              opacity: (newRestaurant.trim() && newAmount.trim()) ? 1 : 0.5 
-            }]}
+            style={[
+              styles.postButton,
+              {
+                opacity: newRestaurant.trim() && newAmount.trim() ? 1 : 0.5,
+              },
+            ]}
             onPress={handlePost}
             disabled={!newRestaurant.trim() || !newAmount.trim()}
           >
@@ -301,27 +312,27 @@ const styles = StyleSheet.create({
     color: "#666",
   },
   tabContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    backgroundColor: 'white',
+    borderBottomColor: "#eee",
+    backgroundColor: "white",
   },
   tab: {
     flex: 1,
     paddingVertical: 15,
-    alignItems: 'center',
+    alignItems: "center",
   },
   activeTab: {
     borderBottomWidth: 2,
-    borderBottomColor: '#4CD964',
+    borderBottomColor: "#4CD964",
   },
   tabText: {
-    color: '#666666',
+    color: "#666666",
     fontSize: 16,
-    fontFamily: 'InriaSans-Regular',
+    fontFamily: "InriaSans-Regular",
   },
   activeTabText: {
-    color: '#4CD964',
-    fontFamily: 'InriaSans-Bold',
+    color: "#4CD964",
+    fontFamily: "InriaSans-Bold",
   },
 });

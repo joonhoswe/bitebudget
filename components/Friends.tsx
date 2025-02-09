@@ -17,7 +17,7 @@ type FriendRequest = {
 
 type Friend = {
   id: string;
-  username: string;
+  email: string;
 };
 
 export default function Friends() {
@@ -70,29 +70,36 @@ export default function Friends() {
   };
 
   const fetchFriends = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("friends")
-        .eq("id", user.id)
-        .single();
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("friends")
+          .eq("id", user.id)
+          .single();
 
-      if (profile?.friends) {
-        const friendDetails = await Promise.all(
-          profile.friends.map(async (friendId: string) => {
-            const { data: friendProfile } = await supabase
-              .from("profiles")
-              .select("id, username")
-              .eq("id", friendId)
-              .single();
-            return friendProfile;
-          })
-        );
-        setFriends(friendDetails.filter(Boolean));
+        if (profile?.friends) {
+          // Get email for each friend ID
+          const friendsWithEmails = await Promise.all(
+            profile.friends.map(async (friendId: string) => {
+              const { data } = await supabase.rpc("get_email_from_auth_users", {
+                user_id: friendId,
+              });
+              return {
+                id: friendId,
+                email: data[0]?.email || "Unknown email",
+              };
+            })
+          );
+          setFriends(friendsWithEmails);
+        }
       }
+    } catch (error) {
+      console.error("Error fetching friends:", error);
+      Alert.alert("Error fetching friends");
     }
   };
 
@@ -259,7 +266,7 @@ export default function Friends() {
           data={friends}
           renderItem={({ item }) => (
             <View style={styles.friendItem}>
-              <Text style={styles.username}>{item.username}</Text>
+              <Text style={styles.username}>{item.email}</Text>
             </View>
           )}
           keyExtractor={(item) => item.id}
