@@ -3,7 +3,7 @@ import 'react-native-get-random-values';
 import { Stack } from 'expo-router';
 import { Connection, PublicKey, Transaction, SystemProgram, Keypair } from '@solana/web3.js';
 import { useCallback, useState, useEffect } from 'react';
-import { Text, TouchableOpacity, View, Alert, Platform, StyleSheet, Image, FlatList, ActivityIndicator, Modal } from 'react-native';
+import { Text, TouchableOpacity, View, Alert, Platform, StyleSheet, Image, FlatList, ActivityIndicator, Modal, SafeAreaView } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import phantomIcon from '../../assets/images/Phantom.png';
 import * as Linking from 'expo-linking';
@@ -12,6 +12,7 @@ import * as Crypto from 'expo-crypto';
 import { MaterialIcons } from '@expo/vector-icons';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
+import * as ed2curve from 'ed2curve';
 
 const SOLANA_NETWORK = 'devnet';
 const ENDPOINT = new Connection('https://api.devnet.solana.com');
@@ -44,7 +45,8 @@ const MAGIC_EDEN_API_BASE = 'https://api-mainnet.magiceden.dev/v2';
 let dappKeyPair: Keypair | null = null;
 
 const generateNonce = () => {
-  const randomBytes = Crypto.getRandomBytes(32);
+  // Use 24 bytes (nacl.box requires a 24-byte nonce)
+  const randomBytes = Crypto.getRandomBytes(24);
   return Buffer.from(randomBytes).toString('base64');
 };
 
@@ -55,26 +57,57 @@ const decryptPayload = (
   dappSecretKey: Uint8Array
 ): { public_key: string } | null => {
   try {
-    const dappKeypair = Keypair.fromSecretKey(dappSecretKey);
+    // Convert inputs to Uint8Array
+    const messageBytes = bs58.decode(data);
+    const nonceBytes = bs58.decode(nonce);
+    const phantomPublicKeyBytes = bs58.decode(phantomEncryptionPublicKey);
+
+    // Convert Ed25519 secret key to X25519
+    const convertedSecretKey = ed2curve.convertSecretKey(dappSecretKey);
+    if (!convertedSecretKey) {
+      throw new Error('Secret key conversion failed');
+    }
+
+    console.log('Debug lengths:', {
+      messageLength: messageBytes.length,
+      nonceLength: nonceBytes.length,
+      phantomKeyLength: phantomPublicKeyBytes.length,
+      secretKeyLength: convertedSecretKey.length,
+      versionByte: messageBytes[0]
+    });
+
+    // Generate shared secret using the converted secret key
     const sharedSecretDapp = nacl.box.before(
-      bs58.decode(phantomEncryptionPublicKey),
-      dappKeypair.secretKey
+      phantomPublicKeyBytes,
+      convertedSecretKey
     );
-    
-    const decryptedData = nacl.box.open.after(
-      bs58.decode(data),
-      bs58.decode(nonce),
+
+    // Determine whether to remove the version byte based on its value
+    const cipherText = 
+      messageBytes[0] === 1 ? messageBytes.subarray(1) : messageBytes;
+
+    // Attempt decryption with the determined ciphertext
+    const decryptedBytes = nacl.box.open.after(
+      cipherText,
+      nonceBytes,
       sharedSecretDapp
     );
-    
-    if (!decryptedData) {
-      throw new Error('Unable to decrypt data');
+
+    if (!decryptedBytes) {
+      throw new Error('Failed to decrypt message');
     }
-    
-    const decodedData = Buffer.from(decryptedData).toString('utf8');
-    return JSON.parse(decodedData);
+
+    const decryptedString = Buffer.from(decryptedBytes).toString('utf8');
+    console.log('Decrypted data:', decryptedString);
+
+    const parsed = JSON.parse(decryptedString);
+    if (!parsed.public_key) {
+      throw new Error('Missing public key in decrypted data');
+    }
+
+    return parsed;
   } catch (error) {
-    console.error('Error decrypting payload:', error);
+    console.error('Decryption error:', error);
     return null;
   }
 };
@@ -92,6 +125,128 @@ const SuccessModal = ({ visible, onClose }: { visible: boolean; onClose: () => v
     </View>
   </Modal>
 );
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  connectContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  phantomLogo: {
+    width: 100,
+    height: 100,
+    marginBottom: 20,
+  },
+  phantomButton: {
+    backgroundColor: '#534BB1',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  downloadButton: {
+    backgroundColor: '#534BB1',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  walletContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  modalText: {
+    marginVertical: 15,
+    fontSize: 16,
+  },
+  modalButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#534BB1',
+    borderRadius: 5,
+  },
+  modalButtonText: {
+    color: 'white',
+  },
+  nftItem: {
+    flexDirection: 'row',
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  nftImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+  },
+  nftInfo: {
+    flex: 1,
+    marginLeft: 10,
+    justifyContent: 'center',
+  },
+  nftTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  nftPrice: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+  },
+  purchaseButton: {
+    backgroundColor: '#534BB1',
+    padding: 8,
+    borderRadius: 4,
+    alignItems: 'center',
+    width: 100,
+  },
+});
+
+const fetchNFTs = async () => {
+  try {
+    const response = await fetch(`${MAGIC_EDEN_API_BASE}/collections/popular`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch NFTs');
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching NFTs:', error);
+    return [];
+  }
+};
+
+const connectWallet = async () => {
+  try {
+    // Android-specific wallet connection logic here
+    Alert.alert('Info', 'Android wallet connection not implemented yet');
+  } catch (error) {
+    console.error('Error connecting wallet:', error);
+    Alert.alert('Error', 'Failed to connect wallet');
+  }
+};
 
 export default function WalletScreen() {
   const [connected, setConnected] = useState(false);
@@ -196,7 +351,7 @@ export default function WalletScreen() {
     }
   }, [publicKey]);
 
-  // Move fetchUserNFTs before handleDeepLink
+  // Move fetchUserNFTs after the state declarations
   const fetchUserNFTs = useCallback(async () => {
     if (!publicKey) return;
     
@@ -264,29 +419,37 @@ export default function WalletScreen() {
       if (parsedUrl.path?.includes('wallet')) {
         const { data, nonce, phantom_encryption_public_key } = parsedUrl.queryParams || {};
         
-        if (data && nonce && phantom_encryption_public_key) {
-          if (!dappKeyPair) {
-            throw new Error('No dapp keypair found');
-          }
-
-          const decryptedData = decryptPayload(
-            data as string,
-            nonce as string,
-            phantom_encryption_public_key as string,
-            dappKeyPair.secretKey // Pass the secretKey directly from the keypair
-          );
-
-          if (decryptedData?.public_key) {
-            console.log('Setting public key:', decryptedData.public_key);
-            setPublicKey(decryptedData.public_key);
-            setConnected(true);
-            setShowSuccess(true);
-          }
+        if (!data || !nonce || !phantom_encryption_public_key) {
+          throw new Error('Missing required parameters');
         }
+
+        if (!dappKeyPair) {
+          throw new Error('No dapp keypair found');
+        }
+
+        console.log('Decrypting with keypair:', {
+          publicKey: dappKeyPair.publicKey.toString(),
+          secretKeyLength: dappKeyPair.secretKey.length
+        });
+
+        const decryptedData = decryptPayload(
+          data as string,
+          nonce as string,
+          phantom_encryption_public_key as string,
+          dappKeyPair.secretKey
+        );
+
+        if (!decryptedData || !decryptedData.public_key) {
+          throw new Error('Failed to decrypt wallet data');
+        }
+
+        setPublicKey(decryptedData.public_key);
+        setConnected(true);
+        setShowSuccess(true);
       }
     } catch (error) {
-      console.error('Error handling deep link:', error);
-      Alert.alert('Error', 'Failed to process wallet connection');
+      console.error('Deep link handling error:', error);
+      Alert.alert('Error', 'Failed to connect wallet. Please try again.');
     }
   }, []);
 
@@ -311,24 +474,30 @@ export default function WalletScreen() {
   const openPhantomApp = useCallback(async () => {
     try {
       if (Platform.OS === 'ios') {
-        // Generate and store the keypair
+        // Generate new keypair
         dappKeyPair = Keypair.generate();
-        const dappPublicKey = dappKeyPair.publicKey.toString();
-        
+
+        // Convert Ed25519 public key to X25519 format for Phantom
+        const convertedPublicKey = ed2curve.convertPublicKey(dappKeyPair.publicKey.toBytes());
+        if (!convertedPublicKey) {
+          throw new Error('Public key conversion failed');
+        }
+        const dappPublicKey = bs58.encode(convertedPublicKey);
+
         const nonce = generateNonce();
-        const redirectUrl = __DEV__ 
+        const redirectUrl = __DEV__
           ? `exp://${HOST}/--/wallet`
           : `${APP_SCHEME}://wallet`;
 
-        const phantomUrl = `${PHANTOM_CONNECT_URL}?` + 
-          `app_url=${encodeURIComponent('https://bitebudget.app')}` + 
+        // Encode the nonce into base58
+        const encodedNonce = bs58.encode(Buffer.from(nonce, 'base64'));
+
+        const phantomUrl = `${PHANTOM_CONNECT_URL}?` +
+          `app_url=${encodeURIComponent('https://bitebudget.app')}` +
           `&dapp_encryption_public_key=${encodeURIComponent(dappPublicKey)}` +
           `&redirect_link=${encodeURIComponent(redirectUrl)}` +
-          `&nonce=${encodeURIComponent(nonce)}` +
-          `&cluster=${SOLANA_NETWORK}` +
-          `&app_cluster=${SOLANA_NETWORK}` +
-          `&name=${encodeURIComponent('BiteBudget')}` + 
-          `&icon=${encodeURIComponent('https://bitebudget.app/icon.png')}`;
+          `&nonce=${encodeURIComponent(encodedNonce)}` +
+          `&cluster=${SOLANA_NETWORK}`;
 
         console.log('Opening Phantom with URL:', phantomUrl);
         await Linking.openURL(phantomUrl);
@@ -357,7 +526,7 @@ export default function WalletScreen() {
     }
   }, [connected, publicKey, fetchNFTs, fetchUserNFTs]);
 
-  // Add purchase NFT function
+  // Update the purchaseNFT function
   const purchaseNFT = useCallback(async (nft: NFT) => {
     if (!publicKey) {
       Alert.alert('Error', 'Please connect your wallet first');
@@ -382,390 +551,42 @@ export default function WalletScreen() {
           `app_url=${encodeURIComponent(redirectUrl)}` +
           `&recipient=${encodeURIComponent(transactionData.to)}` +
           `&amount=${transactionData.amount}` +
-          `&splToken=${transactionData.splToken}` +
-          `&reference=${transactionData.reference}`;
+          `&splToken=${transactionData.splToken}`;
 
         await Linking.openURL(phantomUrl);
       } else {
-        // Existing Android implementation
-        const { transact } = require('@solana-mobile/mobile-wallet-adapter-protocol-web3js');
-        await transact(async (wallet: any) => {
-          const response = await fetch(
-            `${MAGIC_EDEN_API_BASE}/tokens/${nft.mintAddress}/listings`
-          );
-          const listings = await response.json();
-          if (!listings.length) {
-            throw new Error('NFT listing not found');
-          }
-
-          const purchaseResponse = await fetch(
-            `${MAGIC_EDEN_API_BASE}/instructions/buy`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                buyerAddress: publicKey,
-                sellerAddress: listings[0].seller,
-                auctionHouseAddress: listings[0].auctionHouse,
-                tokenMint: nft.mintAddress,
-                price: nft.price,
-              }),
-            }
-          );
-
-          const { txData } = await purchaseResponse.json();
-          const signatures = await wallet.signAndSendTransactions({
-            payloads: [txData]
-          });
-
-          if (signatures?.length > 0) {
-            Alert.alert('Success', 'NFT purchased successfully!');
-            fetchUserNFTs();
-          }
-        });
+        // Android implementation
+        connectWallet();
       }
     } catch (error) {
       console.error('Error purchasing NFT:', error);
-      Alert.alert('Error', 'Failed to purchase NFT');
+      Alert.alert('Error', 'Failed to purchase NFT. Please try again.');
     }
-  }, [publicKey, fetchUserNFTs]);
-
-  // Add NFT rendering components
-  const renderNFTItem = ({ item }: { item: NFT }) => (
-    <View style={styles.nftCard}>
-      <Image 
-        source={{ uri: item.image }} 
-        style={styles.nftImage}
-        resizeMode="cover"
-      />
-      <Text style={styles.nftTitle} numberOfLines={1}>
-        {item.title}
-      </Text>
-      <Text style={styles.nftPrice}>{item.price} SOL</Text>
-      <TouchableOpacity
-        style={styles.buyButton}
-        onPress={() => purchaseNFT(item)}
-      >
-        <Text style={styles.buyButtonText}>Buy Now</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  const renderUserNFTItem = ({ item }: { item: NFT }) => (
-    <View style={[styles.nftCard, { width: 150, marginRight: 12 }]}>
-      <Image 
-        source={{ uri: item.image }} 
-        style={styles.nftImage}
-        resizeMode="cover"
-      />
-      <Text style={styles.nftTitle} numberOfLines={1}>
-        {item.title}
-      </Text>
-      <Text style={[styles.nftPrice, { fontSize: 14 }]}>
-        {item.collectionName}
-      </Text>
-    </View>
-  );
+  }, [publicKey, connectWallet]);
 
   return (
-    <View style={styles.container}>
-      <Stack.Screen
-        options={{
-          headerShown: false,
-        }}
-      />
-
-      <View style={styles.content}>
-        <View>
-          <Text style={styles.title}>Blockchain</Text>
-          
-          <Text style={styles.description}>
-            Take control of your financial future with blockchain. Using Solana (SOL) and Phantom Wallet, you'll gain hands-on experience with Web3 transactions, managing digital assets, and engaging with decentralized finance—all in one place.
-          </Text>
-        </View>
-
-        {!connected ? (
-          <View style={styles.walletSection}>
-            <Text style={styles.connectTitle}>Connect a wallet</Text>
-
-            <TouchableOpacity
-              onPress={openPhantomApp}
-              style={styles.phantomButton}
-            >
-              <Image 
-                source={phantomIcon}
-                style={styles.phantomIcon}
-              />
-              <Text style={styles.buttonText}>Log Into Phantom</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.orText}>Or</Text>
-
-            <TouchableOpacity
-              onPress={downloadPhantom}
-              style={styles.phantomButton}
-            >
-              <Image 
-                source={phantomIcon}
-                style={styles.phantomIcon}
-              />
-              <Text style={styles.buttonText}>Download Phantom</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <>
-            <View style={styles.connectedSection}>
-              <Text style={styles.connectedText}>
-                Connected: {publicKey?.slice(0, 4)}...{publicKey?.slice(-4)}
-              </Text>
-              
-              <TouchableOpacity
-                onPress={sendTransaction}
-                style={styles.sendButton}
-              >
-                <Text style={styles.buttonText}>Send Transaction</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={async () => {
-                  if (publicKey) {
-                    await Clipboard.setStringAsync(publicKey);
-                    Alert.alert('Copied', 'Address copied to clipboard');
-                  }
-                }}
-                style={styles.copyButton}
-              >
-                <Text style={styles.copyButtonText}>Copy Address</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.nftContainer}>
-              <Text style={styles.sectionTitle}>Available NFTs</Text>
-              {loading ? (
-                <ActivityIndicator size="large" color="#534BB1" />
-              ) : nfts.length > 0 ? (
-                <FlatList
-                  data={nfts}
-                  renderItem={renderNFTItem}
-                  keyExtractor={(item) => item.mintAddress}
-                  horizontal={false}
-                  numColumns={2}
-                  contentContainerStyle={styles.nftGrid}
-                />
-              ) : (
-                <Text style={styles.emptyText}>No NFTs available</Text>
-              )}
-
-              <Text style={styles.sectionTitle}>Your NFTs</Text>
-              {loading ? (
-                <ActivityIndicator size="large" color="#534BB1" />
-              ) : userNfts.length > 0 ? (
-                <FlatList
-                  data={userNfts}
-                  renderItem={renderUserNFTItem}
-                  keyExtractor={(item) => item.mintAddress}
-                  horizontal={true}
-                  contentContainerStyle={styles.userNftList}
-                />
-              ) : (
-                <Text style={styles.emptyText}>No NFTs in your collection</Text>
-              )}
-            </View>
-          </>
-        )}
+    <SafeAreaView style={styles.container}>
+      <Stack.Screen options={{ title: 'Wallet' }} />
+      <View style={styles.connectContainer}>
+        <Image 
+          source={phantomIcon} 
+          style={styles.phantomLogo}
+          resizeMode="contain"
+        />
+        <TouchableOpacity 
+          onPress={openPhantomApp} 
+          style={styles.phantomButton}
+        >
+          <Text style={styles.buttonText}>Connect with Phantom</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          onPress={downloadPhantom} 
+          style={styles.downloadButton}
+        >
+          <Text style={styles.buttonText}>Download Phantom</Text>
+        </TouchableOpacity>
       </View>
-
-      <SuccessModal
-        visible={showSuccess}
-        onClose={() => setShowSuccess(false)}
-      />
-    </View>
+      <SuccessModal visible={showSuccess} onClose={() => setShowSuccess(false)} />
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 140,
-    paddingBottom: 100,
-  },
-  title: {
-    fontSize: 32,
-    fontFamily: 'InriaSans-Bold',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  description: {
-    fontSize: 16,
-    fontFamily: 'InriaSans-Regular',
-    textAlign: 'center',
-    marginBottom: 0,
-    paddingHorizontal: 20,
-    color: '#666666',
-    lineHeight: 24,
-  },
-  walletSection: {
-    width: '100%',
-    alignItems: 'center',
-    marginTop: 200,
-  },
-  connectTitle: {
-    fontSize: 24,
-    fontFamily: 'InriaSans-Bold',
-    marginBottom: 20,
-  },
-  phantomButton: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#534BB1',
-  },
-  buttonText: {
-    color: '#534BB1',
-    fontFamily: 'InriaSans-Bold',
-    fontSize: 16,
-    flex: 1,
-    textAlign: 'center',
-  },
-  phantomIcon: {
-    width: 24,
-    height: 24,
-    marginRight: 12,
-  },
-  orText: {
-    fontFamily: 'InriaSans-Regular',
-    fontSize: 16,
-    marginVertical: 10,
-    color: '#666666',
-  },
-  connectedSection: {
-    width: '100%',
-    marginTop: 20,
-  },
-  connectedText: {
-    fontFamily: 'InriaSans-Regular',
-    marginBottom: 10,
-  },
-  sendButton: {
-    backgroundColor: '#534BB1',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  copyButton: {
-    backgroundColor: '#F0F0F0',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  copyButtonText: {
-    color: '#666666',
-    fontFamily: 'InriaSans-Regular',
-  },
-  nftContainer: {
-    flex: 1,
-    width: '100%',
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontFamily: 'InriaSans-Bold',
-    marginVertical: 16,
-    paddingHorizontal: 16,
-  },
-  nftGrid: {
-    padding: 8,
-  },
-  nftCard: {
-    flex: 1,
-    margin: 8,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  nftImage: {
-    width: '100%',
-    aspectRatio: 1,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  nftTitle: {
-    fontSize: 16,
-    fontFamily: 'InriaSans-Regular',
-    marginBottom: 4,
-  },
-  nftPrice: {
-    fontSize: 18,
-    fontFamily: 'InriaSans-Bold',
-    color: '#534BB1',
-    marginBottom: 8,
-  },
-  buyButton: {
-    backgroundColor: '#534BB1',
-    padding: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buyButtonText: {
-    color: '#FFFFFF',
-    fontFamily: 'InriaSans-Bold',
-    fontSize: 14,
-  },
-  userNftList: {
-    padding: 16,
-  },
-  emptyText: {
-    textAlign: 'center',
-    fontFamily: 'InriaSans-Regular',
-    color: '#666666',
-    padding: 20,
-  },
-  successIcon: {
-    alignItems: 'center',
-    marginBottom: 10,
-    paddingTop: 10,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    padding: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  modalText: {
-    marginVertical: 15,
-    fontSize: 16,
-  },
-  modalButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: '#534BB1',
-    borderRadius: 5,
-  },
-  modalButtonText: {
-    color: 'white',
-  },
-}); 
