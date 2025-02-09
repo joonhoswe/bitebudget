@@ -12,7 +12,7 @@ import { supabase } from "@/utils/supabase";
 
 type FriendRequest = {
   id: string;
-  username: string;
+  email: string;
 };
 
 type Friend = {
@@ -58,17 +58,13 @@ export default function Friends() {
         .single();
 
       if (profile?.requests) {
-        const requestDetails = await Promise.all(
-          profile.requests.map(async (requesterId: string) => {
-            const { data: requesterProfile } = await supabase
-              .from("profiles")
-              .select("id, username")
-              .eq("id", requesterId)
-              .single();
-            return requesterProfile;
+        const requestDetails: FriendRequest[] = profile.requests.map(
+          (email: string) => ({
+            id: email,
+            email: email,
           })
         );
-        setRequests(requestDetails.filter(Boolean));
+        setRequests(requestDetails);
       }
     }
   };
@@ -148,7 +144,7 @@ export default function Friends() {
     }
   };
 
-  const handleRequest = async (requesterId: string, accept: boolean) => {
+  const handleRequest = async (requesterEmail: string, accept: boolean) => {
     try {
       const {
         data: { user },
@@ -156,13 +152,26 @@ export default function Friends() {
       if (!user) return;
 
       // Remove request from current user's requests
-      const newRequests = requests.filter((req) => req.id !== requesterId);
+      const newRequests = requests.filter((req) => req.id !== requesterEmail);
       await supabase
         .from("profiles")
         .update({ requests: newRequests.map((req) => req.id) })
         .eq("id", user.id);
 
       if (accept) {
+        // Get requester's ID from their email using RPC function
+        const { data: userData, error: userError } = await supabase.rpc(
+          "get_user_id_by_email",
+          { email: requesterEmail }
+        );
+
+        if (userError || !userData || userData.length === 0) {
+          Alert.alert("Error finding requester");
+          return;
+        }
+
+        const requesterId = userData[0].id;
+
         // Add to both users' friends lists
         const { data: currentProfile } = await supabase
           .from("profiles")
@@ -195,6 +204,7 @@ export default function Friends() {
 
       setRequests(newRequests);
     } catch (error) {
+      console.error("Error handling friend request:", error);
       Alert.alert("Error handling friend request");
     }
   };
@@ -221,7 +231,7 @@ export default function Friends() {
             data={requests}
             renderItem={({ item }) => (
               <View style={styles.requestItem}>
-                <Text style={styles.username}>{item.username}</Text>
+                <Text style={styles.username}>{item.email}</Text>
                 <View style={styles.requestButtons}>
                   <TouchableOpacity
                     style={[styles.actionButton, styles.acceptButton]}
