@@ -8,6 +8,7 @@ import { HapticTab } from "@/components/HapticTab";
 import TabBarBackground from "@/components/ui/TabBarBackground";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
+import TransactionForm from '@/components/TransactionForm';
 
 const TabBarIcon = ({ name, color, title }: { name: keyof typeof Ionicons.glyphMap; color: string; title: string }) => (
   <React.Fragment>
@@ -20,6 +21,7 @@ export default function TabLayout(): JSX.Element {
   const colorScheme = useColorScheme();
   const [isOpen, setIsOpen] = useState(false);
   const animation = useRef(new Animated.Value(0)).current;
+  const [isFormVisible, setIsFormVisible] = useState(false);
 
   const handleCameraPress = async () => {
     // Request camera permissions when the camera button is pressed
@@ -47,6 +49,11 @@ export default function TabLayout(): JSX.Element {
     
     // Close the menu after handling the camera press
     toggleMenu();
+  };
+
+  const handlePencilPress = () => {
+    setIsFormVisible(true);
+    toggleMenu(); // Close the menu after opening the form
   };
 
   const toggleMenu = () => {
@@ -138,7 +145,10 @@ export default function TabLayout(): JSX.Element {
             }
           ]}
         >
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={handlePencilPress}
+          >
             <View style={styles.menuButton}>
               <Image 
                 source={require('../../assets/images/pencil.png')} 
@@ -160,6 +170,11 @@ export default function TabLayout(): JSX.Element {
           </TouchableOpacity>
         </Animated.View>
       )}
+
+      <TransactionForm 
+        isVisible={isFormVisible}
+        onClose={() => setIsFormVisible(false)}
+      />
 
       <TouchableOpacity 
         style={styles.fab}

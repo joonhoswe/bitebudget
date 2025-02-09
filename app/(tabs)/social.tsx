@@ -29,10 +29,6 @@ type Post = {
 
 export default function SocialScreen() {
   const [posts, setPosts] = useState<Post[]>([]);
-  const [newPost, setNewPost] = useState("");
-  const [newRestaurant, setNewRestaurant] = useState("");
-  const [newAmount, setNewAmount] = useState("");
-  const [userId, setUserId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"feed" | "friends">("feed");
 
   useEffect(() => {
@@ -150,24 +146,6 @@ export default function SocialScreen() {
     };
   }, []);
 
-  useEffect(() => {
-    getCurrentUser();
-  }, []);
-
-  const getCurrentUser = async () => {
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser();
-    if (error) {
-      console.error("Error getting user:", error.message);
-      return;
-    }
-    if (user) {
-      setUserId(user.id);
-    }
-  };
-
   const handleLike = async (postId: number) => {
     try {
       const post = posts.find((p) => p.id === postId);
@@ -189,7 +167,7 @@ export default function SocialScreen() {
           likes: post.isLiked ? post.likes - 1 : post.likes + 1,
         })
         .eq("id", postId)
-        .eq("userID", post.userID); // Ensure we're updating the correct user's transaction
+        .eq("userID", post.userID);
 
       if (error) {
         console.error("Error updating likes:", error);
@@ -211,34 +189,6 @@ export default function SocialScreen() {
     } catch (err) {
       console.error("Error in handleLike:", err);
     }
-  };
-
-  const handlePost = async () => {
-    if (!userId) {
-      console.error("User not authenticated");
-      return;
-    }
-
-    const { error } = await supabase.from("transactions").insert([
-      {
-        userID: userId,
-        restaurant: newRestaurant,
-        amount: parseFloat(newAmount),
-        created_at: new Date().toISOString(),
-        likes: 0,
-        comments: 0,
-        is_liked: false,
-      },
-    ]);
-
-    if (error) {
-      console.error("Error creating post:", error.message);
-      return;
-    }
-
-    // Clear input fields after successful post
-    setNewRestaurant("");
-    setNewAmount("");
   };
 
   const renderPost = ({ item }: { item: Post }) => (
@@ -290,47 +240,13 @@ export default function SocialScreen() {
       </View>
 
       {activeTab === "feed" ? (
-        <>
-          <FlatList
-            data={posts}
-            renderItem={renderPost}
-            keyExtractor={(item) => item.id.toString()}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 250 }}
-          />
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={styles.inputContainer}
-          >
-            <View style={styles.newPostContainer}>
-              <TextInput
-                style={styles.input}
-                value={newRestaurant}
-                onChangeText={setNewRestaurant}
-                placeholder="Restaurant name"
-              />
-              <TextInput
-                style={styles.input}
-                value={newAmount}
-                onChangeText={setNewAmount}
-                placeholder="Amount spent"
-                keyboardType="decimal-pad"
-              />
-              <TouchableOpacity
-                style={[
-                  styles.postButton,
-                  {
-                    opacity: newRestaurant.trim() && newAmount.trim() ? 1 : 0.5,
-                  },
-                ]}
-                onPress={handlePost}
-                disabled={!newRestaurant.trim() || !newAmount.trim()}
-              >
-                <Text style={styles.postButtonText}>Post</Text>
-              </TouchableOpacity>
-            </View>
-          </KeyboardAvoidingView>
-        </>
+        <FlatList
+          data={posts}
+          renderItem={renderPost}
+          keyExtractor={(item) => item.id.toString()}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+        />
       ) : (
         <Friends />
       )}
@@ -342,81 +258,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
-  },
-  inputContainer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "white",
-  },
-  newPostContainer: {
-    padding: 15,
-    backgroundColor: "white",
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
-    marginBottom: Platform.OS === "ios" ? 90 : 60,
-  },
-  input: {
-    height: 40,
-    padding: 10,
-    backgroundColor: "#f9f9f9",
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  postButton: {
-    backgroundColor: "#4CD964",
-    padding: 10,
-    borderRadius: 5,
-    alignItems: "center",
-  },
-  postButtonText: {
-    color: "white",
-    fontWeight: "bold",
-  },
-  postContainer: {
-    backgroundColor: "white",
-    padding: 15,
-    marginBottom: 10,
-  },
-  postHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 10,
-  },
-  username: {
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  timeAgo: {
-    color: "#666",
-    fontSize: 12,
-  },
-  content: {
-    fontSize: 16,
-    marginBottom: 10,
-    lineHeight: 22,
-  },
-  actions: {
-    flexDirection: "row",
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
-    paddingTop: 10,
-  },
-  actionButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginRight: 20,
-  },
-  actionText: {
-    marginLeft: 5,
-    color: "#666",
   },
   tabContainer: {
     flexDirection: "row",
