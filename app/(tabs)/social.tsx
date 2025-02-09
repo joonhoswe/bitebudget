@@ -67,10 +67,13 @@ export default function SocialScreen() {
         const postsWithEmails = await Promise.all(
           data.map(async (post) => {
             try {
-              const { data: emailData } = await supabase.rpc('get_email_from_auth_users', {
-                user_id: post.userID
-              });
-              const userEmail = emailData?.[0]?.email || 'Unknown User';
+              const { data: emailData } = await supabase.rpc(
+                "get_email_from_auth_users",
+                {
+                  user_id: post.userID,
+                }
+              );
+              const userEmail = emailData?.[0]?.email || "Unknown User";
 
               return {
                 id: post.id,
@@ -84,10 +87,10 @@ export default function SocialScreen() {
                 isLiked: false,
               };
             } catch (err) {
-              console.error('Error fetching email:', err);
+              console.error("Error fetching email:", err);
               return {
                 ...post,
-                userEmail: 'Unknown User',
+                userEmail: "Unknown User",
                 timestamp: new Date(post.created_at).toLocaleString(),
                 likes: post.likes ?? 0,
                 comments: post.comments ?? 0,
@@ -113,10 +116,13 @@ export default function SocialScreen() {
         async (payload) => {
           const newTransaction = payload.new;
           try {
-            const { data: emailData } = await supabase.rpc('get_email_from_auth_users', {
-              user_id: newTransaction.userID
-            });
-            const userEmail = emailData?.[0]?.email || 'Unknown User';
+            const { data: emailData } = await supabase.rpc(
+              "get_email_from_auth_users",
+              {
+                user_id: newTransaction.userID,
+              }
+            );
+            const userEmail = emailData?.[0]?.email || "Unknown User";
 
             setPosts((currentPosts) => [
               {
@@ -133,7 +139,7 @@ export default function SocialScreen() {
               ...currentPosts,
             ]);
           } catch (err) {
-            console.error('Error fetching email for new transaction:', err);
+            console.error("Error fetching email for new transaction:", err);
           }
         }
       )
@@ -167,16 +173,30 @@ export default function SocialScreen() {
       const post = posts.find((p) => p.id === postId);
       if (!post) return;
 
+      // Get current user
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        console.error("User not authenticated");
+        return;
+      }
+
+      // Update likes in the transactions table
       const { error } = await supabase
         .from("transactions")
-        .update({ likes: post.isLiked ? post.likes - 1 : post.likes + 1 })
-        .eq("id", postId);
+        .update({
+          likes: post.isLiked ? post.likes - 1 : post.likes + 1,
+        })
+        .eq("id", postId)
+        .eq("userID", post.userID); // Ensure we're updating the correct user's transaction
 
       if (error) {
         console.error("Error updating likes:", error);
         return;
       }
 
+      // Update local state
       setPosts(
         posts.map((p) =>
           p.id === postId
@@ -276,7 +296,7 @@ export default function SocialScreen() {
             renderItem={renderPost}
             keyExtractor={(item) => item.id.toString()}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 180 }}
+            contentContainerStyle={{ paddingBottom: 250 }}
           />
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : "height"}
