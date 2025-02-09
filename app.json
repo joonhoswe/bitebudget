@@ -12,8 +12,19 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.bitebudget.app",
       "associatedDomains": [
-        "applinks:bitebudget.app"
-      ]
+        "applinks:bitebudget.app",
+        "applinks:phantom.app"
+      ],
+      "usesNonExemptEncryption": false,
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "bitebudget"
+            ]
+          }
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -28,7 +39,7 @@
           "data": [
             {
               "scheme": "bitebudget",
-              "host": "phantom-login"
+              "host": "wallet"
             }
           ],
           "category": ["BROWSABLE", "DEFAULT"]

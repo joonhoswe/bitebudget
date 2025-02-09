@@ -1,15 +1,23 @@
 import React from 'react';
 import 'react-native-get-random-values';
 import { Stack } from 'expo-router';
-import { Connection, PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
+import { Connection, PublicKey, Transaction, SystemProgram, Keypair } from '@solana/web3.js';
 import { useCallback, useState, useEffect } from 'react';
-import { Text, TouchableOpacity, View, Alert, Platform, StyleSheet, Image, FlatList, ActivityIndicator } from 'react-native';
+import { Text, TouchableOpacity, View, Alert, Platform, StyleSheet, Image, FlatList, ActivityIndicator, Modal } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import phantomIcon from '../../assets/images/Phantom.png';
 import * as Linking from 'expo-linking';
+import { Buffer } from 'buffer';
+import * as Crypto from 'expo-crypto';
+import { MaterialIcons } from '@expo/vector-icons';
+import nacl from 'tweetnacl';
+import bs58 from 'bs58';
 
 const SOLANA_NETWORK = 'devnet';
 const ENDPOINT = new Connection('https://api.devnet.solana.com');
+const APP_SCHEME = __DEV__ ? 'exp' : 'bitebudget';
+const HOST = __DEV__ ? '10.52.104.144:8081' : null; // Replace with your dev machine's IP
+const PHANTOM_CONNECT_URL = 'https://phantom.app/ul/v1/connect';
 
 // Add new interfaces
 interface NFT {
@@ -33,12 +41,65 @@ interface MagicEdenListing {
 
 const MAGIC_EDEN_API_BASE = 'https://api-mainnet.magiceden.dev/v2';
 
+let dappKeyPair: Keypair | null = null;
+
+const generateNonce = () => {
+  const randomBytes = Crypto.getRandomBytes(32);
+  return Buffer.from(randomBytes).toString('base64');
+};
+
+const decryptPayload = (
+  data: string,
+  nonce: string,
+  phantomEncryptionPublicKey: string,
+  dappSecretKey: Uint8Array
+): { public_key: string } | null => {
+  try {
+    const dappKeypair = Keypair.fromSecretKey(dappSecretKey);
+    const sharedSecretDapp = nacl.box.before(
+      bs58.decode(phantomEncryptionPublicKey),
+      dappKeypair.secretKey
+    );
+    
+    const decryptedData = nacl.box.open.after(
+      bs58.decode(data),
+      bs58.decode(nonce),
+      sharedSecretDapp
+    );
+    
+    if (!decryptedData) {
+      throw new Error('Unable to decrypt data');
+    }
+    
+    const decodedData = Buffer.from(decryptedData).toString('utf8');
+    return JSON.parse(decodedData);
+  } catch (error) {
+    console.error('Error decrypting payload:', error);
+    return null;
+  }
+};
+
+const SuccessModal = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => (
+  <Modal visible={visible} transparent animationType="fade">
+    <View style={styles.modalOverlay}>
+      <View style={styles.modalContent}>
+        <MaterialIcons name="check-circle" size={50} color="#4CAF50" />
+        <Text style={styles.modalText}>Wallet Connected Successfully</Text>
+        <TouchableOpacity onPress={onClose} style={styles.modalButton}>
+          <Text style={styles.modalButtonText}>OK</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </Modal>
+);
+
 export default function WalletScreen() {
   const [connected, setConnected] = useState(false);
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [nfts, setNfts] = useState<NFT[]>([]);
   const [loading, setLoading] = useState(false);
   const [userNfts, setUserNfts] = useState<NFT[]>([]);
+  const [showSuccess, setShowSuccess] = useState(false);
   
   const connectWallet = useCallback(async () => {
     try {
@@ -143,15 +204,95 @@ export default function WalletScreen() {
       const response = await fetch(
         `${MAGIC_EDEN_API_BASE}/wallets/${publicKey}/tokens`
       );
+      if (!response.ok) {
+        throw new Error('Failed to fetch user NFTs');
+      }
+      
       const userNFTData = await response.json();
       setUserNfts(userNFTData);
     } catch (error) {
       console.error('Error fetching user NFTs:', error);
+      setUserNfts([]); // Set empty array on error
     }
   }, [publicKey]);
 
+  // Move fetchNFTs definition before handleDeepLink
+  const fetchNFTs = useCallback(async () => {
+    try {
+      const response = await fetch(`${MAGIC_EDEN_API_BASE}/collections/okay_bears/listings?limit=20`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch listings');
+      }
+      
+      const listings = await response.json() as MagicEdenListing[];
+      
+      const nftData = await Promise.all(listings.map(async (listing) => {
+        const metadataResponse = await fetch(
+          `${MAGIC_EDEN_API_BASE}/tokens/${listing.tokenMint}`
+        );
+        if (!metadataResponse.ok) {
+          throw new Error(`Failed to fetch metadata for ${listing.tokenMint}`);
+        }
+        
+        const metadata = await metadataResponse.json();
+        
+        return {
+          mintAddress: listing.tokenMint,
+          title: metadata.name || 'Unnamed NFT',
+          price: listing.price,
+          image: metadata.image || 'https://via.placeholder.com/150',
+          collectionName: 'Okay Bears'
+        };
+      }));
+
+      setNfts(nftData);
+    } catch (error) {
+      console.error('Error fetching NFTs:', error);
+      setNfts([]);
+    }
+  }, []);
+
+  // Then define handleDeepLink after fetchNFTs
+  const handleDeepLink = useCallback(async ({ url }: { url: string }) => {
+    if (!url) return;
+    console.log('Received deep link:', url);
+
+    try {
+      const parsedUrl = Linking.parse(url);
+      console.log('Parsed URL:', parsedUrl);
+
+      if (parsedUrl.path?.includes('wallet')) {
+        const { data, nonce, phantom_encryption_public_key } = parsedUrl.queryParams || {};
+        
+        if (data && nonce && phantom_encryption_public_key) {
+          if (!dappKeyPair) {
+            throw new Error('No dapp keypair found');
+          }
+
+          const decryptedData = decryptPayload(
+            data as string,
+            nonce as string,
+            phantom_encryption_public_key as string,
+            dappKeyPair.secretKey // Pass the secretKey directly from the keypair
+          );
+
+          if (decryptedData?.public_key) {
+            console.log('Setting public key:', decryptedData.public_key);
+            setPublicKey(decryptedData.public_key);
+            setConnected(true);
+            setShowSuccess(true);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error handling deep link:', error);
+      Alert.alert('Error', 'Failed to process wallet connection');
+    }
+  }, []);
+
   // Add URL listener for deep linking
   useEffect(() => {
+    // Handle deep linking when app is already running
     const subscription = Linking.addEventListener('url', handleDeepLink);
 
     // Handle deep linking when app is opened from background
@@ -164,76 +305,41 @@ export default function WalletScreen() {
     return () => {
       subscription.remove();
     };
-  }, []);
-
-  // Add deep link handler
-  const handleDeepLink = useCallback(async ({ url }: { url: string }) => {
-    if (!url) return;
-
-    // Parse the URL
-    const { path, queryParams } = Linking.parse(url);
-
-    // Check if this is a return from Phantom
-    if (path?.includes('phantom-login')) {
-      // Extract data from URL parameters
-      const params = queryParams as { 
-        public_key?: string; 
-        signature?: string;
-        session?: string;
-      };
-      
-      if (params.public_key) {
-        setPublicKey(params.public_key);
-        setConnected(true);
-        // Fetch user's NFTs after successful connection
-        fetchUserNFTs();
-        
-        // Show success message
-        Alert.alert('Success', 'Wallet connected successfully!');
-      }
-    }
-  }, [fetchUserNFTs]);
+  }, [handleDeepLink]);
 
   // Modify the openPhantomApp function
   const openPhantomApp = useCallback(async () => {
     try {
       if (Platform.OS === 'ios') {
-        // Create deep link URL for your app with the correct scheme
-        const redirectUrl = Linking.createURL('phantom-login', {
-          scheme: 'bitebudget'
-        });
+        // Generate and store the keypair
+        dappKeyPair = Keypair.generate();
+        const dappPublicKey = dappKeyPair.publicKey.toString();
         
-        // Try opening Phantom with the correct deep link format
-        const phantomUrl = `phantom://browse/${encodeURIComponent(`https://phantom.app/ul/v1/connect?app_url=${encodeURIComponent(redirectUrl)}`)}`;
-        
-        try {
-          await Linking.openURL(phantomUrl);
-        } catch (err) {
-          // If opening Phantom fails, show install prompt
-          Alert.alert(
-            'Phantom Not Found',
-            'Please install Phantom wallet to continue',
-            [
-              {
-                text: 'Install Phantom',
-                onPress: downloadPhantom,
-              },
-              {
-                text: 'Cancel',
-                style: 'cancel',
-              },
-            ]
-          );
-        }
+        const nonce = generateNonce();
+        const redirectUrl = __DEV__ 
+          ? `exp://${HOST}/--/wallet`
+          : `${APP_SCHEME}://wallet`;
+
+        const phantomUrl = `${PHANTOM_CONNECT_URL}?` + 
+          `app_url=${encodeURIComponent('https://bitebudget.app')}` + 
+          `&dapp_encryption_public_key=${encodeURIComponent(dappPublicKey)}` +
+          `&redirect_link=${encodeURIComponent(redirectUrl)}` +
+          `&nonce=${encodeURIComponent(nonce)}` +
+          `&cluster=${SOLANA_NETWORK}` +
+          `&app_cluster=${SOLANA_NETWORK}` +
+          `&name=${encodeURIComponent('BiteBudget')}` + 
+          `&icon=${encodeURIComponent('https://bitebudget.app/icon.png')}`;
+
+        console.log('Opening Phantom with URL:', phantomUrl);
+        await Linking.openURL(phantomUrl);
       } else {
-        // Existing Android implementation
         connectWallet();
       }
     } catch (error) {
       console.error('Error opening Phantom:', error);
       Alert.alert('Error', 'Failed to open Phantom wallet');
     }
-  }, []);
+  }, [connectWallet]);
 
   const downloadPhantom = useCallback(() => {
     if (Platform.OS === 'ios') {
@@ -243,46 +349,13 @@ export default function WalletScreen() {
     }
   }, []);
 
-  // Add NFT fetching function
-  const fetchNFTs = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`${MAGIC_EDEN_API_BASE}/collections/bitebudget/listings`);
-      const listings = await response.json() as MagicEdenListing[];
-      
-      const nftData = await Promise.all(listings.map(async (listing) => {
-        const metadataResponse = await fetch(
-          `${MAGIC_EDEN_API_BASE}/tokens/${listing.tokenMint}`
-        );
-        const metadata = await metadataResponse.json();
-        
-        return {
-          mintAddress: listing.tokenMint,
-          title: metadata.name,
-          price: listing.price,
-          image: metadata.image,
-          collectionName: metadata.collection
-        };
-      }));
-
-      setNfts(nftData);
-    } catch (error) {
-      console.error('Error fetching NFTs:', error);
-      Alert.alert('Error', 'Failed to load NFTs');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchNFTs();
-  }, []);
-
   useEffect(() => {
     if (connected && publicKey) {
-      fetchUserNFTs();
+      setLoading(true);
+      Promise.all([fetchNFTs(), fetchUserNFTs()])
+        .finally(() => setLoading(false));
     }
-  }, [connected, publicKey]);
+  }, [connected, publicKey, fetchNFTs, fetchUserNFTs]);
 
   // Add purchase NFT function
   const purchaseNFT = useCallback(async (nft: NFT) => {
@@ -363,8 +436,11 @@ export default function WalletScreen() {
       <Image 
         source={{ uri: item.image }} 
         style={styles.nftImage}
+        resizeMode="cover"
       />
-      <Text style={styles.nftTitle}>{item.title}</Text>
+      <Text style={styles.nftTitle} numberOfLines={1}>
+        {item.title}
+      </Text>
       <Text style={styles.nftPrice}>{item.price} SOL</Text>
       <TouchableOpacity
         style={styles.buyButton}
@@ -376,12 +452,18 @@ export default function WalletScreen() {
   );
 
   const renderUserNFTItem = ({ item }: { item: NFT }) => (
-    <View style={styles.nftCard}>
+    <View style={[styles.nftCard, { width: 150, marginRight: 12 }]}>
       <Image 
         source={{ uri: item.image }} 
         style={styles.nftImage}
+        resizeMode="cover"
       />
-      <Text style={styles.nftTitle}>{item.title}</Text>
+      <Text style={styles.nftTitle} numberOfLines={1}>
+        {item.title}
+      </Text>
+      <Text style={[styles.nftPrice, { fontSize: 14 }]}>
+        {item.collectionName}
+      </Text>
     </View>
   );
 
@@ -461,7 +543,7 @@ export default function WalletScreen() {
               <Text style={styles.sectionTitle}>Available NFTs</Text>
               {loading ? (
                 <ActivityIndicator size="large" color="#534BB1" />
-              ) : (
+              ) : nfts.length > 0 ? (
                 <FlatList
                   data={nfts}
                   renderItem={renderNFTItem}
@@ -470,20 +552,33 @@ export default function WalletScreen() {
                   numColumns={2}
                   contentContainerStyle={styles.nftGrid}
                 />
+              ) : (
+                <Text style={styles.emptyText}>No NFTs available</Text>
               )}
 
               <Text style={styles.sectionTitle}>Your NFTs</Text>
-              <FlatList
-                data={userNfts}
-                renderItem={renderUserNFTItem}
-                keyExtractor={(item) => item.mintAddress}
-                horizontal={true}
-                contentContainerStyle={styles.userNftList}
-              />
+              {loading ? (
+                <ActivityIndicator size="large" color="#534BB1" />
+              ) : userNfts.length > 0 ? (
+                <FlatList
+                  data={userNfts}
+                  renderItem={renderUserNFTItem}
+                  keyExtractor={(item) => item.mintAddress}
+                  horizontal={true}
+                  contentContainerStyle={styles.userNftList}
+                />
+              ) : (
+                <Text style={styles.emptyText}>No NFTs in your collection</Text>
+              )}
             </View>
           </>
         )}
       </View>
+
+      <SuccessModal
+        visible={showSuccess}
+        onClose={() => setShowSuccess(false)}
+      />
     </View>
   );
 }
@@ -636,5 +731,41 @@ const styles = StyleSheet.create({
   },
   userNftList: {
     padding: 16,
+  },
+  emptyText: {
+    textAlign: 'center',
+    fontFamily: 'InriaSans-Regular',
+    color: '#666666',
+    padding: 20,
+  },
+  successIcon: {
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingTop: 10,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  modalText: {
+    marginVertical: 15,
+    fontSize: 16,
+  },
+  modalButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#534BB1',
+    borderRadius: 5,
+  },
+  modalButtonText: {
+    color: 'white',
   },
 }); 
