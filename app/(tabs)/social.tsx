@@ -7,6 +7,8 @@ import {
   FlatList,
   TextInput,
   StyleSheet,
+  Platform,
+  KeyboardAvoidingView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Transaction from "../components/transaction";
@@ -67,27 +69,14 @@ export default function SocialScreen() {
           restaurant: post.restaurant,
           amount: post.amount,
           userID: post.userID,
+          userEmail: "Unknown User",
           timestamp: new Date(post.created_at).toLocaleString(),
           likes: post.likes ?? 0,
           comments: post.comments ?? 0,
           isLiked: false,
         }));
 
-            return {
-              id: post.id,
-              restaurant: post.restaurant,
-              amount: post.amount,
-              userID: post.userID,
-              userEmail: emailData?.[0]?.email || "Unknown User",
-              timestamp: new Date(post.created_at).toLocaleString(),
-              likes: post.likes ?? 0,
-              comments: post.comments ?? 0,
-              isLiked: false,
-            };
-          })
-        );
-
-        setPosts(postsWithEmails);
+        setPosts(formattedPosts);
       } catch (error) {
         console.error("Error:", error);
       }
@@ -108,6 +97,7 @@ export default function SocialScreen() {
               restaurant: newTransaction.restaurant,
               amount: newTransaction.amount,
               userID: newTransaction.userID,
+              userEmail: "Unknown User",
               timestamp: new Date(newTransaction.created_at).toLocaleString(),
               likes: newTransaction.likes ?? 0,
               comments: newTransaction.comments ?? 0,
@@ -308,7 +298,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
     zIndex: 1000,
-    paddingBottom: Platform.OS === 'ios' ? 25 : 15,a
+    paddingBottom: Platform.OS === 'ios' ? 25 : 15,
   },
   input: {
     height: 100,
