@@ -24,11 +24,14 @@
     "@solana/wallet-adapter-react": "^0.15.35",
     "@solana/web3.js": "^1.98.0",
     "@supabase/supabase-js": "^2.48.1",
+    "bs58": "^6.0.0",
+    "ed2curve": "^0.3.0",
     "expo": "~52.0.31",
     "expo-blur": "~14.0.3",
     "expo-camera": "~16.0.15",
     "expo-clipboard": "~7.0.1",
     "expo-constants": "~17.0.5",
+    "expo-crypto": "~14.0.2",
     "expo-font": "~13.0.3",
     "expo-haptics": "~14.0.1",
     "expo-image": "^2.0.4",
@@ -52,7 +55,8 @@
     "react-native-url-polyfill": "^2.0.0",
     "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.5",
-    "vector-icons": "^0.1.0"
+    "vector-icons": "^0.1.0",
+    "expo-image-picker": "~16.0.5"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
