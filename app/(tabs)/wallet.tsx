@@ -2,8 +2,9 @@ import 'react-native-get-random-values';
 import { Stack } from 'expo-router';
 import { Connection, PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
 import { useCallback, useState } from 'react';
-import { Text, TouchableOpacity, View, Alert, Platform, Linking, StyleSheet } from 'react-native';
+import { Text, TouchableOpacity, View, Alert, Platform, Linking, StyleSheet, Image } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import phantomIcon from '../../assets/images/Phantom.png';
 
 const SOLANA_NETWORK = 'devnet';
 const ENDPOINT = new Connection('https://api.devnet.solana.com');
@@ -129,11 +130,13 @@ export default function WalletScreen() {
       />
 
       <View style={styles.content}>
-        <Text style={styles.title}>Blockchain</Text>
-        
-        <Text style={styles.description}>
-          Learn financial responsibility for the future. Using Solana (SOL) and Phantom Wallet, you can experience Web3 transactions.
-        </Text>
+        <View>
+          <Text style={styles.title}>Blockchain</Text>
+          
+          <Text style={styles.description}>
+            Take control of your financial future with blockchain. Using Solana (SOL) and Phantom Wallet, you'll gain hands-on experience with Web3 transactions, managing digital assets, and engaging with decentralized finance—all in one place.
+          </Text>
+        </View>
 
         <View style={styles.walletSection}>
           <Text style={styles.connectTitle}>Connect a wallet</Text>
@@ -142,6 +145,10 @@ export default function WalletScreen() {
             onPress={openPhantomApp}
             style={styles.phantomButton}
           >
+            <Image 
+              source={phantomIcon}
+              style={styles.phantomIcon}
+            />
             <Text style={styles.buttonText}>Log Into Phantom</Text>
           </TouchableOpacity>
 
@@ -151,6 +158,10 @@ export default function WalletScreen() {
             onPress={downloadPhantom}
             style={styles.phantomButton}
           >
+            <Image 
+              source={phantomIcon}
+              style={styles.phantomIcon}
+            />
             <Text style={styles.buttonText}>Download Phantom</Text>
           </TouchableOpacity>
         </View>
@@ -195,25 +206,29 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 140,
+    paddingBottom: 100,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontFamily: 'InriaSans-Bold',
-    marginBottom: 20,
+    marginBottom: 16,
     textAlign: 'center',
   },
   description: {
     fontSize: 16,
     fontFamily: 'InriaSans-Regular',
     textAlign: 'center',
-    marginBottom: 40,
+    marginBottom: 0,
     paddingHorizontal: 20,
     color: '#666666',
+    lineHeight: 24,
   },
   walletSection: {
     width: '100%',
     alignItems: 'center',
+    marginTop: 200,
   },
   connectTitle: {
     fontSize: 24,
@@ -221,17 +236,27 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   phantomButton: {
-    backgroundColor: '#4CD964',
+    backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 12,
+    flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#534BB1',
   },
   buttonText: {
-    color: 'white',
+    color: '#534BB1',
     fontFamily: 'InriaSans-Bold',
     fontSize: 16,
+    flex: 1,
+    textAlign: 'center',
+  },
+  phantomIcon: {
+    width: 24,
+    height: 24,
+    marginRight: 12,
   },
   orText: {
     fontFamily: 'InriaSans-Regular',
@@ -248,7 +273,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   sendButton: {
-    backgroundColor: '#4CD964',
+    backgroundColor: '#534BB1',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
