@@ -95,16 +95,16 @@ export default function TabLayout(): JSX.Element {
           options={{
             title: "Leaderboard",
             tabBarIcon: ({ color, focused }) => (
-              <TabBarIcon name="trophy" color={color} title="Ranks" />
+              <TabBarIcon name="trophy" color={color} title="ranks" />
             ),
           }}
         />
         <Tabs.Screen
           name="social"
           options={{
-            title: "Social",
+            title: "social",
             tabBarIcon: ({ color, focused }) => (
-              <TabBarIcon name="people" color={color} title="Social" />
+              <TabBarIcon name="people" color={color} title="social" />
             ),
           }}
         />
@@ -113,16 +113,16 @@ export default function TabLayout(): JSX.Element {
           options={{
             title: "Wallet",
             tabBarIcon: ({ color, focused }) => (
-              <TabBarIcon name="wallet" color={color} title="Wallet" />
+              <TabBarIcon name="wallet" color={color} title="wallet" />
             ),
           }}
         />
         <Tabs.Screen
           name="profile"
           options={{
-            title: "Profile",
+            title: "profile",
             tabBarIcon: ({ color, focused }) => (
-              <TabBarIcon name="person" color={color} title="Profile" />
+              <TabBarIcon name="person" color={color} title="profile" />
             ),
           }}
         />

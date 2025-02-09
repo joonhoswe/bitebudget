@@ -98,26 +98,7 @@ export default function Leaderboard() {
         }}
       />
 
-      <View style={{ padding: 20 }}>
-        {/* Logo and Title */}
-        <Image
-          source={coinImage}
-          style={{
-            width: 40,
-            height: 40,
-            marginBottom: 10,
-          }}
-        />
-        <Text
-          style={{
-            color: "#4CD964",
-            fontFamily: "InriaSans-Regular",
-            fontSize: 16,
-          }}
-        >
-          bitebudget
-        </Text>
-
+      <View style={{ padding: 20 }}>  
         {/* Nav Bar Selector */}
         <View
           style={{
@@ -145,7 +126,7 @@ export default function Leaderboard() {
                 fontSize: 12,
               }}
             >
-              Money Saved
+              money saved
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -162,7 +143,7 @@ export default function Leaderboard() {
                 fontSize: 12,
               }}
             >
-              Longest Streak
+              longest streak
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -179,7 +160,7 @@ export default function Leaderboard() {
                 fontSize: 12,
               }}
             >
-              Discount Hunter
+              discount hunter
             </Text>
           </TouchableOpacity>
         </View>

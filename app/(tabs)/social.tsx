@@ -221,7 +221,7 @@ export default function SocialScreen() {
               activeTab === "feed" && styles.activeTabText,
             ]}
           >
-            Feed
+            feed
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -234,7 +234,7 @@ export default function SocialScreen() {
               activeTab === "friends" && styles.activeTabText,
             ]}
           >
-            Friends
+            friends
           </Text>
         </TouchableOpacity>
       </View>
