@@ -13,29 +13,15 @@ import SpendingChart from "../../components/SpendingChart";
 import TransactionList from "../../components/TransactionList";
 import { supabase } from "../../utils/supabase";
 
-const mockTransactions = [
-  {
-    id: "1",
-    merchant: "Starbucks",
-    amount: 170.0,
-    timestamp: "2024-02-20T10:00:00Z",
-    type: "coffee",
-  },
-  {
-    id: "2",
-    merchant: "McDonalds",
-    amount: 250.0,
-    timestamp: "2024-02-20T12:30:00Z",
-    type: "food",
-  },
-  {
-    id: "3",
-    merchant: "Uniqlo",
-    amount: 120.0,
-    timestamp: "2024-02-20T15:00:00Z",
-    type: "clothing",
-  },
-];
+// Add Transaction type definition
+type Transaction = {
+  id: string;
+  restaurant: string;
+  amount: number;
+  created_at: string;
+  type: "coffee" | "food" | "clothing";
+  userID: string;
+};
 
 const chartData = {
   labels: ["Jan", "Feb", "Mar", "Apr", "May", "June"],
@@ -49,7 +35,9 @@ const chartData = {
 type TimeRange = "week" | "month" | "year";
 
 export default function ProfileScreen() {
-  const [, /*user*/ setUser] = useState<any>(null);
+  const [user, setUser] = useState<any>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [totalSpent, setTotalSpent] = useState(0);
   const [isBarChart, setIsBarChart] = useState(true);
   const [timeRange, setTimeRange] = useState<TimeRange>("week");
 
@@ -72,6 +60,28 @@ export default function ProfileScreen() {
         data: { user: currentUser },
       } = await supabase.auth.getUser();
       setUser(currentUser);
+      
+      if (currentUser) {
+        // Fetch transactions for the current user
+        const { data: userTransactions, error } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('userID', currentUser.id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching transactions:', error);
+          return;
+        }
+
+        setTransactions(userTransactions as Transaction[]);
+        
+        // Calculate total spent
+        const total = userTransactions.reduce((sum, transaction) => 
+          sum + transaction.amount, 0
+        );
+        setTotalSpent(total);
+      }
     };
     getUser();
   }, []);
@@ -166,7 +176,7 @@ export default function ProfileScreen() {
               color: "#333333",
             }}
           >
-            $170.00
+            ${totalSpent.toFixed(2)}
           </Text>
           <Text
             style={{
@@ -176,7 +186,7 @@ export default function ProfileScreen() {
               marginTop: 5,
             }}
           >
-            September 2023
+            Total Spent
           </Text>
         </View>
 
@@ -203,7 +213,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* Transactions List */}
-        <TransactionList transactions={mockTransactions} />
+        <TransactionList transactions={transactions} />
       </View>
     </SafeAreaView>
   );
