@@ -9,6 +9,7 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Transaction from "../components/transaction";
@@ -30,78 +31,85 @@ type Post = {
 export default function SocialScreen() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [activeTab, setActiveTab] = useState<"feed" | "friends">("feed");
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchPosts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("transactions")
+        .select(
+          `
+          id,
+          restaurant,
+          amount,
+          userID,
+          created_at,
+          likes,
+          comments
+        `
+        )
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (error) {
+        console.error("Error fetching posts:", error);
+        return;
+      }
+
+      if (!data) {
+        setPosts([]);
+        return;
+      }
+
+      const postsWithEmails = await Promise.all(
+        data.map(async (post) => {
+          try {
+            const { data: emailData } = await supabase.rpc(
+              "get_email_from_auth_users",
+              {
+                user_id: post.userID,
+              }
+            );
+            const userEmail = emailData?.[0]?.email || "Unknown User";
+
+            return {
+              id: post.id,
+              restaurant: post.restaurant,
+              amount: post.amount,
+              userID: post.userID,
+              userEmail: userEmail,
+              timestamp: new Date(post.created_at).toLocaleString(),
+              likes: post.likes ?? 0,
+              comments: post.comments ?? 0,
+              isLiked: false,
+            };
+          } catch (err) {
+            console.error("Error fetching email:", err);
+            return {
+              ...post,
+              userEmail: "Unknown User",
+              timestamp: new Date(post.created_at).toLocaleString(),
+              likes: post.likes ?? 0,
+              comments: post.comments ?? 0,
+              isLiked: false,
+            };
+          }
+        })
+      );
+
+      setPosts(postsWithEmails);
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await fetchPosts();
+    setRefreshing(false);
+  }, []);
 
   useEffect(() => {
-    const fetchPosts = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("transactions")
-          .select(
-            `
-            id,
-            restaurant,
-            amount,
-            userID,
-            created_at,
-            likes,
-            comments
-          `
-          )
-          .order("created_at", { ascending: false })
-          .limit(50);
-
-        if (error) {
-          console.error("Error fetching posts:", error);
-          return;
-        }
-
-        if (!data) {
-          setPosts([]);
-          return;
-        }
-
-        const postsWithEmails = await Promise.all(
-          data.map(async (post) => {
-            try {
-              const { data: emailData } = await supabase.rpc(
-                "get_email_from_auth_users",
-                {
-                  user_id: post.userID,
-                }
-              );
-              const userEmail = emailData?.[0]?.email || "Unknown User";
-
-              return {
-                id: post.id,
-                restaurant: post.restaurant,
-                amount: post.amount,
-                userID: post.userID,
-                userEmail: userEmail,
-                timestamp: new Date(post.created_at).toLocaleString(),
-                likes: post.likes ?? 0,
-                comments: post.comments ?? 0,
-                isLiked: false,
-              };
-            } catch (err) {
-              console.error("Error fetching email:", err);
-              return {
-                ...post,
-                userEmail: "Unknown User",
-                timestamp: new Date(post.created_at).toLocaleString(),
-                likes: post.likes ?? 0,
-                comments: post.comments ?? 0,
-                isLiked: false,
-              };
-            }
-          })
-        );
-
-        setPosts(postsWithEmails);
-      } catch (error) {
-        console.error("Error:", error);
-      }
-    };
-
     fetchPosts();
 
     const subscription = supabase
@@ -245,6 +253,9 @@ export default function SocialScreen() {
           renderItem={renderPost}
           keyExtractor={(item) => item.id.toString()}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
         />
       ) : (
         <Friends />
