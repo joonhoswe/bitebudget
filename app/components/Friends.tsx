@@ -8,8 +8,10 @@ import {
   FlatList,
   StyleSheet,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { supabase } from "@/utils/supabase";
+import Ionicons from "react-native-vector-icons/Ionicons";
 
 type FriendRequest = {
   id: string;
@@ -25,6 +27,7 @@ export default function Friends() {
   const [searchEmail, setSearchEmail] = useState("");
   const [requests, setRequests] = useState<FriendRequest[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
+  const [isReloading, setIsReloading] = useState(false);
 
   useEffect(() => {
     fetchRequests();
@@ -32,7 +35,9 @@ export default function Friends() {
   }, []);
 
   const fetchRequests = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (user) {
       const { data: profile } = await supabase
         .from("profiles")
@@ -54,7 +59,9 @@ export default function Friends() {
 
   const fetchFriends = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
         const { data: profile } = await supabase
           .from("profiles")
@@ -96,7 +103,9 @@ export default function Friends() {
       }
 
       const targetUserId = userData[0].id;
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
       const { data: targetUser } = await supabase
@@ -126,7 +135,9 @@ export default function Friends() {
 
   const handleRequest = async (requesterEmail: string, accept: boolean) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
       const newRequests = requests.filter((req) => req.id !== requesterEmail);
@@ -136,10 +147,9 @@ export default function Friends() {
         .eq("id", user.id);
 
       if (accept) {
-        const { data: userData } = await supabase.rpc(
-          "get_user_id_by_email",
-          { email: requesterEmail }
-        );
+        const { data: userData } = await supabase.rpc("get_user_id_by_email", {
+          email: requesterEmail,
+        });
 
         if (!userData || userData.length === 0) {
           Alert.alert("Error finding requester");
@@ -175,6 +185,10 @@ export default function Friends() {
           .eq("id", requesterId);
 
         fetchFriends();
+        Alert.alert(
+          "Friend Added!",
+          `You and ${requesterEmail} are now friends!`
+        );
       }
 
       setRequests(newRequests);
@@ -182,6 +196,13 @@ export default function Friends() {
       console.error("Error handling friend request:", error);
       Alert.alert("Error handling friend request");
     }
+  };
+
+  const handleReload = async () => {
+    setIsReloading(true);
+    await fetchRequests();
+    await fetchFriends();
+    setIsReloading(false);
   };
 
   return (
@@ -196,6 +217,17 @@ export default function Friends() {
         />
         <TouchableOpacity style={styles.addButton} onPress={sendFriendRequest}>
           <Text style={styles.buttonText}>Add Friend</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.reloadButton} 
+          onPress={handleReload}
+          disabled={isReloading}
+        >
+          {isReloading ? (
+            <ActivityIndicator color="#4CD964" />
+          ) : (
+            <Ionicons name="reload" size={24} color="#4CD964" />
+          )}
         </TouchableOpacity>
       </View>
 
@@ -252,6 +284,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: "row",
     marginBottom: 20,
+    alignItems: "center",
   },
   input: {
     flex: 1,
@@ -266,6 +299,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#4CD964",
     padding: 10,
     borderRadius: 8,
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  reloadButton: {
+    padding: 8,
+    borderRadius: 20,
     justifyContent: "center",
   },
   section: {
@@ -310,4 +349,4 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold",
   },
-}); 
+});
