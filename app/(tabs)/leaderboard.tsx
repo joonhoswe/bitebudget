@@ -30,24 +30,6 @@ export default function Leaderboard() {
       />
 
       <View style={{ padding: 20 }}>
-        {/* Logo and Title */}
-        <Image
-          source={coinImage}
-          style={{
-            width: 40,
-            height: 40,
-            marginBottom: 10,
-          }}
-        />
-        <Text
-          style={{
-            color: '#4CD964',
-            fontFamily: 'InriaSans-Regular',
-            fontSize: 16,
-          }}
-        >
-          bitebudget
-        </Text>
 
         {/* Nav Bar Selector */}
         <View
