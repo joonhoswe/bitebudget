@@ -3,7 +3,7 @@ import 'react-native-get-random-values';
 import { Stack } from 'expo-router';
 import { Connection, PublicKey, Transaction, SystemProgram, Keypair } from '@solana/web3.js';
 import { useCallback, useState, useEffect } from 'react';
-import { Text, TouchableOpacity, View, Alert, Platform, StyleSheet, Image, FlatList, ActivityIndicator, Modal, SafeAreaView } from 'react-native';
+import { Text, TouchableOpacity, View, Alert, Platform, StyleSheet, Image, FlatList, ActivityIndicator, Modal, SafeAreaView, ScrollView } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import phantomIcon from '../../assets/images/Phantom.png';
 import * as Linking from 'expo-linking';
@@ -132,33 +132,80 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   connectContainer: {
-    flex: 1,
-    justifyContent: 'center',
+    flexGrow: 1,
+    justifyContent: 'flex-start',
     alignItems: 'center',
     padding: 20,
+    paddingBottom: 120,
   },
-  phantomLogo: {
-    width: 100,
-    height: 100,
-    marginBottom: 20,
+  titleSection: {
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 40,
+    paddingHorizontal: 20,
+  },
+  title: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  description: {
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
+    color: '#666',
+    marginBottom: 30,
+  },
+  connectTitle: {
+    fontSize: 42,
+    fontWeight: 'bold',
+    marginBottom: 30,
+    textAlign: 'center',
   },
   phantomButton: {
-    backgroundColor: '#534BB1',
-    paddingVertical: 12,
+    backgroundColor: 'transparent',
+    paddingVertical: 16,
     paddingHorizontal: 24,
-    borderRadius: 8,
-    marginBottom: 12,
+    borderRadius: 100,
+    width: '100%',
+    maxWidth: 400,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#534BB1',
   },
   downloadButton: {
-    backgroundColor: '#534BB1',
-    paddingVertical: 12,
+    backgroundColor: 'transparent',
+    paddingVertical: 16,
     paddingHorizontal: 24,
-    borderRadius: 8,
+    borderRadius: 100,
+    width: '100%',
+    maxWidth: 400,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#534BB1',
   },
   buttonText: {
-    color: 'white',
-    fontSize: 16,
+    color: '#534BB1',
+    fontSize: 18,
     fontWeight: '600',
+    flex: 1,
+    textAlign: 'center',
+    marginRight: 32,
+  },
+  phantomLogo: {
+    width: 24,
+    height: 24,
+    marginLeft: 16,
+    tintColor: undefined,
+  },
+  orText: {
+    fontSize: 20,
+    fontWeight: '500',
+    marginVertical: 16,
   },
   walletContainer: {
     flex: 1,
@@ -222,6 +269,66 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: 100,
   },
+  walletInfo: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  walletInfoContent: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  balanceText: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    marginTop: 40,
+    textAlign: 'center',
+  },
+  balanceLabel: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  balanceAmount: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  phantomHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 40,
+    alignSelf: 'flex-start',
+  },
+  headerLogo: {
+    width: 32,
+    height: 32,
+    marginRight: 12,
+    tintColor: undefined,
+  },
+  headerText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000',
+  },
+  infoSection: {
+    marginTop: 60,
+    paddingHorizontal: 20,
+  },
+  infoTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    textAlign: 'left',
+    alignSelf: 'flex-start',
+  },
+  infoText: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#666',
+    marginBottom: 20,
+    textAlign: 'left',
+  },
 });
 
 const fetchNFTs = async () => {
@@ -255,6 +362,7 @@ export default function WalletScreen() {
   const [loading, setLoading] = useState(false);
   const [userNfts, setUserNfts] = useState<NFT[]>([]);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [balance, setBalance] = useState<number | null>(null);
   
   const connectWallet = useCallback(async () => {
     try {
@@ -518,13 +626,26 @@ export default function WalletScreen() {
     }
   }, []);
 
+  const fetchBalance = useCallback(async () => {
+    if (!publicKey) return;
+    try {
+      const pubKey = new PublicKey(publicKey);
+      const balanceInLamports = await ENDPOINT.getBalance(pubKey);
+      const balanceInSOL = balanceInLamports / 1e9; // Convert lamports to SOL
+      setBalance(balanceInSOL);
+    } catch (error) {
+      console.error('Error fetching balance:', error);
+      setBalance(null);
+    }
+  }, [publicKey]);
+
   useEffect(() => {
     if (connected && publicKey) {
       setLoading(true);
-      Promise.all([fetchNFTs(), fetchUserNFTs()])
+      Promise.all([fetchNFTs(), fetchUserNFTs(), fetchBalance()])
         .finally(() => setLoading(false));
     }
-  }, [connected, publicKey, fetchNFTs, fetchUserNFTs]);
+  }, [connected, publicKey, fetchNFTs, fetchUserNFTs, fetchBalance]);
 
   // Update the purchaseNFT function
   const purchaseNFT = useCallback(async (nft: NFT) => {
@@ -566,26 +687,77 @@ export default function WalletScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Stack.Screen options={{ title: 'Wallet' }} />
-      <View style={styles.connectContainer}>
-        <Image 
-          source={phantomIcon} 
-          style={styles.phantomLogo}
-          resizeMode="contain"
-        />
-        <TouchableOpacity 
-          onPress={openPhantomApp} 
-          style={styles.phantomButton}
-        >
-          <Text style={styles.buttonText}>Connect with Phantom</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          onPress={downloadPhantom} 
-          style={styles.downloadButton}
-        >
-          <Text style={styles.buttonText}>Download Phantom</Text>
-        </TouchableOpacity>
-      </View>
+      <Stack.Screen options={{ headerShown: false }} />
+      {connected && publicKey ? (
+        <ScrollView contentContainerStyle={styles.walletInfoContent}>
+          <View style={styles.phantomHeader}>
+            <Image 
+              source={phantomIcon} 
+              style={styles.headerLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.headerText}>Phantom</Text>
+          </View>
+          
+          <Text style={styles.balanceLabel}>Balance:</Text>
+          <Text style={styles.balanceAmount}>
+            {balance !== null ? `${balance.toFixed(4)} SOL` : 'Loading...'}
+          </Text>
+
+          <View style={styles.infoSection}>
+            <Text style={styles.infoTitle}>What is Web3?</Text>
+            <Text style={styles.infoText}>
+              Web3 is the next evolution of the internet, built on blockchain technology. It enables direct ownership of digital assets and decentralized transactions without intermediaries.
+            </Text>
+
+            <Text style={styles.infoTitle}>What is SOL?</Text>
+            <Text style={styles.infoText}>
+              SOL is the native cryptocurrency of the Solana blockchain. It's known for fast transactions and low fees, making it ideal for decentralized applications (dApps).
+            </Text>
+
+            <Text style={styles.infoTitle}>What can you do with SOL?</Text>
+            <Text style={styles.infoText}>
+              • Trade digital assets and NFTs{'\n'}
+              • Participate in decentralized finance (DeFi){'\n'}
+              • Pay for transaction fees on Solana{'\n'}
+              • Stake to earn passive rewards
+            </Text>
+          </View>
+        </ScrollView>
+      ) : (
+        <ScrollView contentContainerStyle={styles.connectContainer}>
+          <View style={styles.titleSection}>
+            <Text style={styles.title}>Blockchain</Text>
+            <Text style={styles.description}>
+              Take control of your financial future with blockchain. Using Solana (SOL) and Phantom Wallet, 
+              you'll gain hands-on experience with Web3 transactions, managing digital assets, and engaging 
+              with decentralized finance—all in one place.
+            </Text>
+          </View>
+          
+          <Text style={styles.connectTitle}>Connect a wallet</Text>
+          
+          <TouchableOpacity onPress={openPhantomApp} style={styles.phantomButton}>
+            <Image 
+              source={phantomIcon} 
+              style={styles.phantomLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.buttonText}>Log Into Phantom</Text>
+          </TouchableOpacity>
+          
+          <Text style={styles.orText}>Or</Text>
+          
+          <TouchableOpacity onPress={downloadPhantom} style={styles.downloadButton}>
+            <Image 
+              source={phantomIcon} 
+              style={styles.phantomLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.buttonText}>Download Phantom</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      )}
       <SuccessModal visible={showSuccess} onClose={() => setShowSuccess(false)} />
     </SafeAreaView>
   );
