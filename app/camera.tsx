@@ -225,6 +225,9 @@ async function sendImageToBackend(uri: string) {
 
     const data = await response.json();
     console.log("Backend response:", data);
+    console.log(JSON.stringify(data))
+    console.log(data.raw_text)
+    console.log(data.raw_text.substring(26,33))
 
     if (!data.raw_text) {
       console.warn("No text was extracted from the image");
