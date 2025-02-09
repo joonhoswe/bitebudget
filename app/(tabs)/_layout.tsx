@@ -1,6 +1,6 @@
 import { Tabs, router } from "expo-router";
 import React, { useState, useRef } from "react";
-import { Platform, Text, StyleSheet, Animated, TouchableOpacity, View, Image, Linking, Alert } from "react-native";
+import { Platform, Text, StyleSheet, Animated, TouchableOpacity, View, Image, Linking, Alert, StatusBar } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Camera } from 'expo-camera';
 
@@ -62,7 +62,7 @@ export default function TabLayout(): JSX.Element {
   };
 
   return (
-    <>
+    <View>
       <StatusBar barStyle="dark-content" />
       <Tabs
         screenOptions={{
@@ -99,15 +99,6 @@ export default function TabLayout(): JSX.Element {
             title: "Social",
             tabBarIcon: ({ color, focused }) => (
               <TabBarIcon name="people" color={color} title="Social" />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="wallet"
-          options={{
-            title: "Wallet",
-            tabBarIcon: ({ color, focused }) => (
-              <TabBarIcon name="wallet" color={color} title="Wallet" />
             ),
           }}
         />
