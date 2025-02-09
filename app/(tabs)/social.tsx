@@ -31,6 +31,7 @@ export default function SocialScreen() {
   const [newRestaurant, setNewRestaurant] = useState("");
   const [newAmount, setNewAmount] = useState("");
   const [activeTab, setActiveTab] = useState<"feed" | "friends">("feed");
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -61,12 +62,16 @@ export default function SocialScreen() {
           return;
         }
 
-        const postsWithEmails = await Promise.all(
-          data.map(async (post) => {
-            const { data: emailData } = await supabase.rpc(
-              "get_email_from_auth_users",
-              { user_id: post.userID }
-            );
+        const formattedPosts: Post[] = data.map((post) => ({
+          id: post.id,
+          restaurant: post.restaurant,
+          amount: post.amount,
+          userID: post.userID,
+          timestamp: new Date(post.created_at).toLocaleString(),
+          likes: post.likes ?? 0,
+          comments: post.comments ?? 0,
+          isLiked: false,
+        }));
 
             return {
               id: post.id,
@@ -95,21 +100,14 @@ export default function SocialScreen() {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "transactions" },
-        async (payload) => {
+        (payload) => {
           const newTransaction = payload.new;
-
-          const { data: emailData } = await supabase.rpc(
-            "get_email_from_auth_users",
-            { user_id: newTransaction.userID }
-          );
-
           setPosts((currentPosts) => [
             {
               id: newTransaction.id,
               restaurant: newTransaction.restaurant,
               amount: newTransaction.amount,
               userID: newTransaction.userID,
-              userEmail: emailData?.[0]?.email || "Unknown User",
               timestamp: new Date(newTransaction.created_at).toLocaleString(),
               likes: newTransaction.likes ?? 0,
               comments: newTransaction.comments ?? 0,
@@ -126,6 +124,21 @@ export default function SocialScreen() {
     };
   }, []);
 
+  useEffect(() => {
+    getCurrentUser();
+  }, []);
+
+  const getCurrentUser = async () => {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error) {
+      console.error('Error getting user:', error.message);
+      return;
+    }
+    if (user) {
+      setUserId(user.id);
+    }
+  };
+  
   const handleLike = (postId: number) => {
     setPosts(
       posts.map((post) => {
@@ -144,13 +157,15 @@ export default function SocialScreen() {
   const handlePost = async () => {
     if (!newRestaurant.trim() || !newAmount.trim()) return;
 
+    if (!newRestaurant.trim() || !newAmount.trim()) return;
+
     try {
       const { data, error } = await supabase
         .from("transactions")
         .insert({
           restaurant: newRestaurant,
           amount: parseFloat(newAmount),
-          userID: "currentUser", // You'll want to replace this with actual user ID
+          userID: userId,
           created_at: new Date().toISOString(),
         })
         .select()
@@ -216,40 +231,48 @@ export default function SocialScreen() {
       </View>
 
       {activeTab === "feed" ? (
-        <View style={styles.newPostContainer}>
-          <FlatList
-            data={posts}
-            renderItem={renderPost}
-            keyExtractor={(item) => item.id.toString()}
-            showsVerticalScrollIndicator={false}
-          />
-
-          <TextInput
-            style={styles.input}
-            value={newRestaurant}
-            onChangeText={setNewRestaurant}
-            placeholder="Restaurant name"
-          />
-          <TextInput
-            style={styles.input}
-            value={newAmount}
-            onChangeText={setNewAmount}
-            placeholder="Amount spent"
-            keyboardType="decimal-pad"
-          />
-          <TouchableOpacity
-            style={[
-              styles.postButton,
-              {
-                opacity: newRestaurant.trim() && newAmount.trim() ? 1 : 0.5,
-              },
-            ]}
-            onPress={handlePost}
-            disabled={!newRestaurant.trim() || !newAmount.trim()}
-          >
-            <Text style={styles.postButtonText}>Post</Text>
-          </TouchableOpacity>
-        </View>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+        >
+          <View style={styles.feedContainer}>
+            <FlatList
+              data={posts}
+              renderItem={renderPost}
+              keyExtractor={(item) => item.id.toString()}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 250 }}
+            />
+            <View style={styles.newPostContainer}>
+              <TextInput
+                style={styles.input}
+                value={newRestaurant}
+                onChangeText={setNewRestaurant}
+                placeholder="Restaurant name"
+              />
+              <TextInput
+                style={styles.input}
+                value={newAmount}
+                onChangeText={setNewAmount}
+                placeholder="Amount spent"
+                keyboardType="decimal-pad"
+              />
+              <TouchableOpacity
+                style={[
+                  styles.postButton,
+                  {
+                    opacity: newRestaurant.trim() && newAmount.trim() ? 1 : 0.5,
+                  },
+                ]}
+                onPress={handlePost}
+                disabled={!newRestaurant.trim() || !newAmount.trim()}
+              >
+                <Text style={styles.postButtonText}>Post</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
       ) : (
         <Friends />
       )}
@@ -260,13 +283,32 @@ export default function SocialScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "white",
+    backgroundColor: "#f5f5f5",
+  },
+  feedContainer: {
+    flex: 1,
+    position: 'relative',
+    paddingBottom: 0,
   },
   newPostContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     padding: 15,
     backgroundColor: "white",
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+    zIndex: 1000,
+    paddingBottom: Platform.OS === 'ios' ? 25 : 15,a
   },
   input: {
     height: 100,
@@ -274,16 +316,20 @@ const styles = StyleSheet.create({
     backgroundColor: "#f9f9f9",
     borderRadius: 10,
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#eee",
   },
   postButton: {
     backgroundColor: "#4CD964",
-    padding: 10,
-    borderRadius: 5,
+    padding: 15,
+    borderRadius: 10,
     alignItems: "center",
+    marginTop: 5,
   },
   postButtonText: {
     color: "white",
     fontWeight: "bold",
+    fontSize: 16,
   },
   postContainer: {
     backgroundColor: "white",

@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 15,
-    backgroundColor: 'white',
+
   },
   searchContainer: {
     flexDirection: "row",
@@ -315,14 +315,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    backgroundColor: 'white',
+    borderBottomColor: "#eee",
   },
   friendItem: {
     padding: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    backgroundColor: 'white',
+    borderBottomColor: "#eee",
   },
   username: {
     fontSize: 16,
