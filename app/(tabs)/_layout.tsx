@@ -1,12 +1,19 @@
 import { Tabs } from "expo-router";
 import React from "react";
-import { Platform } from "react-native";
+import { Platform, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { HapticTab } from "@/components/HapticTab";
 import TabBarBackground from "@/components/ui/TabBarBackground";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
+
+const TabBarIcon = ({ name, color, title }: { name: keyof typeof Ionicons.glyphMap; color: string; title: string }) => (
+  <React.Fragment>
+    <Ionicons name={name} size={30} color={color} />
+    <Text numberOfLines={1} style={{ color, fontSize: 9, marginTop: 2 }}>{title}</Text>
+  </React.Fragment>
+);
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -37,7 +44,7 @@ export default function TabLayout() {
         options={{
           title: "Leaderboard",
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name="trophy" size={30} color={color} />
+            <TabBarIcon name="trophy" color={color} title="Ranks" />
           ),
         }}
       />
@@ -46,7 +53,7 @@ export default function TabLayout() {
         options={{
           title: "Social",
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name="people" size={30} color={color} />
+            <TabBarIcon name="people" color={color} title="Social" />
           ),
         }}
       />
@@ -55,7 +62,7 @@ export default function TabLayout() {
         options={{
           title: "Wallet",
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name="wallet" size={30} color={color} />
+            <TabBarIcon name="wallet" color={color} title="Wallet" />
           ),
         }}
       />
@@ -64,7 +71,7 @@ export default function TabLayout() {
         options={{
           title: "Profile",
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name="person" size={30} color={color} />
+            <TabBarIcon name="person" color={color} title="Profile" />
           ),
         }}
       />
