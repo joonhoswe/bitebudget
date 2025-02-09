@@ -1,0 +1,9 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '--platform', 'linux/amd64,linux/arm64',
+      '-t', 'gcr.io/thinking-heaven-450318-r3/receipt-scanner',
+      '.'
+    ]
+images: ['gcr.io/thinking-heaven-450318-r3/receipt-scanner']

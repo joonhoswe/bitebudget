@@ -10,6 +10,7 @@ import { Image } from "expo-image";
 import { AntDesign } from "@expo/vector-icons";
 import { Feather } from "@expo/vector-icons";
 import { FontAwesome6 } from "@expo/vector-icons";
+import * as ImagePicker from 'expo-image-picker';
 
 export default function App() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -36,8 +37,16 @@ export default function App() {
 
   const takePicture = async () => {
     const photo = await ref.current?.takePictureAsync();
-    if (photo?.uri) {  // Add a check for the uri
+    if (photo?.uri) {
       setUri(photo.uri);
+    }
+  };
+
+  const parsePhoto = async () => {
+    if (uri) {
+      await sendImageToBackend(uri);
+    } else {
+      console.log("No image to parse.");
     }
   };
 
@@ -69,8 +78,25 @@ export default function App() {
           style={{ width: 300, aspectRatio: 1 }}
         />
         <Button onPress={() => setUri(null)} title="Take another picture" />
+        <Button onPress={parsePhoto} title="Parse Photo" />
       </View>
     );
+  };
+
+  const selectPhoto = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 1,
+    });
+
+    console.log('Image Picker Result:', result);
+    
+    if (!result.canceled) {
+      const selectedUri = result.assets[0].uri;
+      setUri(selectedUri);
+      await sendImageToBackend(selectedUri);
+    }
   };
 
   const renderCamera = () => {
@@ -164,3 +190,27 @@ const styles = StyleSheet.create({
     borderRadius: 50,
   },
 });
+
+async function sendImageToBackend(uri: string) {
+  const formData = new FormData();
+  formData.append('file', {
+    uri,
+    name: 'photo.jpg',
+    type: 'image/jpeg',
+  });
+
+  try {
+    const response = await fetch('http://127.0.0.1:8080/extract-receipt/', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    const data = await response.json();
+    console.log('Image processed:', data);
+  } catch (error) {
+    console.error('Error sending image to backend:', error);
+  }
+}
